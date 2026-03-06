@@ -73,18 +73,17 @@ def poll_sensors(channel):
         res = requests.get(f"{SIMULATOR_URL}/api/sensors", timeout=5)
         res.raise_for_status()
         sensors_list = res.json()
-        print(res)
-        print(sensors_list)
+
         # 2. Interroga ogni singolo sensore
-        for sensor_id in sensors_list:
+        for sensor_id in sensors_list["sensors"]:
             sensor_res = requests.get(f"{SIMULATOR_URL}/api/sensors/{sensor_id}", timeout=5)
-            
+    
             if sensor_res.status_code == 200:
+            
                 raw_data = sensor_res.json()
-                print(f"[+] Dati grezzi ricevuti da {sensor_id}: {raw_data}")
                 # 3. Normalizza i dati secondo SCHEMA_CONTRACT.md
                 normalized_event = normalize_data(raw_data)
-                print(f"[+] Dati normalizzati per {sensor_id}: {normalized_event}")
+                print(normalized_event)
                 # 4. Pubblica su RabbitMQ
                 #channel.basic_publish(
                 #    exchange='normalized_events',
@@ -113,6 +112,7 @@ def main():
         while True:
             poll_sensors(channel)
             time.sleep(POLL_INTERVAL)
+            break
     except KeyboardInterrupt:
         print("Chiusura servizio...")
         if connection and not connection.is_closed:

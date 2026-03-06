@@ -1,20 +1,12 @@
 version: '3.8'
 
-services:
-  # 1. Il Simulatore IoT (Deve essere già stato caricato con docker load)
-  simulator:
-    image: mars-iot-simulator:multiarch_v1
-    ports:
-      - "8080:8080"
-    networks:
-      - mars_net
 
-  # 2. Il Message Broker (RabbitMQ con interfaccia grafica)
+services:
   broker:
     image: rabbitmq:3-management-alpine
     ports:
-      - "5672:5672"   # Porta standard AMQP per i servizi
-      - "15672:15672" # Porta per la UI di gestione (apri http://localhost:15672 dal browser)
+      - "5672:5672"
+      - "15672:15672"
     networks:
       - mars_net
     healthcheck:
@@ -23,12 +15,11 @@ services:
       timeout: 5s
       retries: 5
 
-  # 3. Il tuo servizio di Ingestione
   ingestion_service:
     build: 
       context: ./ingestion_service
     environment:
-      - SIMULATOR_URL=http://simulator:8080
+      - SIMULATOR_URL=http://host.docker.internal:8080
       - BROKER_URL=amqp://guest:guest@broker:5672/
       - POLL_INTERVAL=5
     depends_on:

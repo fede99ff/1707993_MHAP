@@ -259,98 +259,155 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
 <script>
-    // --- CONFIGURAZIONE URL BACKEND ---
     const API_BASE = "http://localhost:8000/api";
-    const WS_URL = "ws://localhost:8000/ws/live-data";
+    const POLLING_INTERVAL_MS = 3000; // Aggiorna i dati ogni 3 secondi
+    let ruleModal;
 
-    let ruleModal; // Variabile globale per controllare il pop-up
-
-    // Inizializzazione al caricamento della pagina
-    window.onload = function() {
+    // Inizializzazione sicura al caricamento della pagina
+    document.addEventListener("DOMContentLoaded", function() {
+        // Inizializza il pop-up
         ruleModal = new bootstrap.Modal(document.getElementById('ruleModal'));
-        connectWebSocket();
-        loadRules();
-    };
+        
+        // Aspetta 1 secondo (1000 millisecondi) prima di fare le prime chiamate
+        setTimeout(() => {
+            console.log("Richiesta iniziale dei dati al backend...");
+            loadRules();
+            startSensorPolling();
+        }, 1000);
+    });
 
-    // --- TIMESTAMP UPDATE ---
     function updateTimestamp() {
         const now = new Date();
-        const timeString = now.toLocaleTimeString(); 
-        document.getElementById("last-update-time").innerText = timeString;
+        document.getElementById("last-update-time").innerText = now.toLocaleTimeString(); 
     }
 
-    // --- 1. ACTUATORS MANAGEMENT ---
+    // --- SENSORI (POLLING REST) ---
+
+    function startSensorPolling() {
+        // Prima chiamata immediata
+        fetchSensorData();
+        fetchActuatorData(); 
+        
+        // Timer ciclico
+        setInterval(() => {
+            fetchSensorData();
+            fetchActuatorData();
+        }, POLLING_INTERVAL_MS);
+    }
+
+    // (La tua funzione fetchSensorData() e updateDashboard() rimangono identiche)
+
+function fetchActuatorData() {
+        fetch(`${API_BASE}/actuators`)
+            .then(res => res.json())
+            .then(data => {
+                // Controlliamo se esiste la chiave "actuators" nel pacchetto ricevuto
+                if (data && data.actuators) {
+                    const attuatori = data.actuators;
+                    
+                    // Cicliamo su ogni attuatore (es. "cooling_fan", "habitat_heater")
+                    for (let id in attuatori) {
+                        const switchEl = document.getElementById(`switch-${id}`);
+                        const state = attuatori[id]; // Sarà "ON" oppure "OFF"
+                        
+                        // Se l'interruttore esiste nell'HTML, lo muoviamo!
+                        if (switchEl) {
+                            switchEl.checked = (state === "ON");
+                        }
+                    }
+                }
+            })
+            .catch(err => console.error("❌ Errore lettura attuatori:", err));
+    }
+    
+function fetchSensorData() {
+    fetch(`${API_BASE}/sensors/latest`)
+        .then(res => res.json())
+        .then(data => {
+            // 🔍 QUESTA È LA RIGA MAGICA DA RIATTIVARE
+            console.log("DEBUG SENSORI:", data); 
+            
+            updateDashboard(data);
+        })
+        .catch(err => console.error("ERRORE FETCH:", err));
+}
+
+function updateDashboard(data) {
+    const sensors = [
+        "greenhouse_temperature", "entrance_humidity", "co2_hall", 
+        "hydroponic_ph", "water_tank_level", "corridor_pressure", "air_quality_voc"
+    ];
+
+    sensors.forEach(id => {
+        const element = document.getElementById(`val-${id}`);
+        if (element && data[id]) {
+            let val = data[id];
+            let finalValue = "--";
+
+            // 1. Se ha la chiave .value (es. CO2, Pressione, Temperatura)
+            if (val.value !== undefined) {
+                finalValue = val.value;
+            } 
+            // 2. Se ha la chiave .level_pct (es. Water Tank)
+            else if (val.level_pct !== undefined) {
+                finalValue = val.level_pct;
+            }
+            // 3. Se ha .measurements (VOC e pH) - PRENDIAMO IL PRIMO VALORE
+            else if (val.measurements && Array.isArray(val.measurements)) {
+                // Se è un array di oggetti tipo [{value: 6.5}], prendiamo il .value
+                // Se è un array di numeri tipo [6.5], prendiamo il numero
+                let firstMeasure = val.measurements[0];
+                finalValue = (typeof firstMeasure === 'object') ? (firstMeasure.value || firstMeasure.voc_ppb) : firstMeasure;
+            }
+            // 4. Fallback: se è un oggetto generico, prendi il primo valore che trovi
+            else if (typeof val === 'object') {
+                finalValue = Object.values(val)[0];
+            } else {
+                finalValue = val;
+            }
+
+            // Formattazione estetica
+            if (typeof finalValue === 'number') {
+                element.innerText = finalValue.toFixed(2);
+            } else {
+                element.innerText = finalValue || "--";
+            }
+        }
+    });
+
+    // Gestione PM2.5 (già corretta nel tuo log)
+    if (data["air_quality_pm25"]) {
+        const pm = data["air_quality_pm25"];
+        document.getElementById("val-air_quality-pm1").innerText = pm.pm1.toFixed(2);
+        document.getElementById("val-air_quality-pm25").innerText = pm.pm25.toFixed(2);
+        document.getElementById("val-air_quality-pm10").innerText = pm.pm10.toFixed(2);
+    }
+    
+    document.getElementById("last-update-time").innerText = new Date().toLocaleTimeString();
+    }
+
+    // --- ATTUATORI ---
     function toggleActuator(actuatorId, isChecked) {
         const state = isChecked ? "ON" : "OFF";
-        console.log(`[API Request] Setting ${actuatorId} to ${state}`);
-        
-        // Invia la richiesta HTTP POST al backend
         fetch(`${API_BASE}/actuators/${actuatorId}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ state: state })
-        })
-        .then(response => {
-            if(!response.ok) alert(`Errore nell'impostare l'attuatore ${actuatorId}`);
-        })
-        .catch(err => console.error("Errore di rete:", err));
+        }).catch(err => alert("Errore connessione attuatore"));
     }
 
-    // --- 2. WEBSOCKET FOR LIVE DATA ---
-    function connectWebSocket() {
-        console.log("Connessione al WebSocket in corso...");
-        
-        const ws = new WebSocket(WS_URL);
-        
-        ws.onopen = () => console.log("✅ WebSocket connesso con successo!");
-        ws.onerror = (err) => console.error("❌ Errore WebSocket. Il backend è acceso?", err);
-        ws.onclose = () => console.log("⚠️ WebSocket disconnesso.");
-
-        ws.onmessage = function(event) {
-            const data = JSON.parse(event.data);
-            
-            if (data.source === "air_quality_pm25" && data.payload) {
-                const elPm1 = document.getElementById("val-air_quality-pm1");
-                const elPm25 = document.getElementById("val-air_quality-pm25");
-                const elPm10 = document.getElementById("val-air_quality-pm10");
-                
-                if(elPm1) elPm1.innerText = data.payload.pm1;
-                if(elPm25) elPm25.innerText = data.payload.pm25;
-                if(elPm10) elPm10.innerText = data.payload.pm10;
-                
-                [elPm1, elPm25, elPm10].forEach(el => {
-                    if(el) { el.style.color = "#28a745"; setTimeout(() => el.style.color = "#0d6efd", 500); }
-                });
-                updateTimestamp();
-            } 
-            else if (data.payload) {
-                const element = document.getElementById("val-" + data.source);
-                if(element) {
-                    let valueToDisplay = data.payload.value || data.payload.level_pct || "N/A";
-                    if (data.payload.measurements) {
-                        valueToDisplay = Object.values(data.payload.measurements)[0];
-                    }
-                    element.innerText = valueToDisplay;
-                    element.style.color = "#28a745";
-                    setTimeout(() => element.style.color = "#0d6efd", 500);
-                    updateTimestamp();
-                }
-            }
-        };
-    }
-
-    // --- 3. RULE ENGINE CRUD & MODAL ---
+    // --- REGOLE (CRUD) ---
     function loadRules() {
-        console.log("Caricamento regole dal database...");
         fetch(`${API_BASE}/rules`)
-            .then(res => res.json())
+            .then(res => {
+                if (!res.ok) throw new Error("Backend non ancora pronto");
+                return res.json();
+            })
             .then(rules => {
                 const tbody = document.getElementById("rules-table-body");
-                tbody.innerHTML = ""; // Svuota i dati finti
-
-                // Genera la tabella dinamicamente con i dati veri
+                tbody.innerHTML = "";
                 rules.forEach(r => {
-                    const row = `
+                    tbody.innerHTML += `
                         <tr>
                             <td>${r.id}</td>
                             <td><code>${r.condition}</code></td>
@@ -362,12 +419,12 @@
                             </td>
                         </tr>
                     `;
-                    tbody.innerHTML += row;
                 });
             })
             .catch(err => {
-                console.error("Errore caricamento regole:", err);
-                document.getElementById("rules-table-body").innerHTML = `<tr><td colspan="5" class="text-center text-danger">⚠️ Impossibile caricare le regole dal backend</td></tr>`;
+                console.warn("Nessuna regola caricata al primo avvio, riprovo tra poco...", err);
+                // Se fallisce, riprova da solo dopo 2 secondi
+                setTimeout(loadRules, 2000); 
             });
     }
 
@@ -379,70 +436,35 @@
     }
 
     function editRule(id, fullCondition, actuator, action) {
-        document.getElementById("ruleModalLabel").innerText = `Edit Rule Number ${id}`;
-        
+        document.getElementById("ruleModalLabel").innerText = `✏️ Edit Rule #${id}`;
         const parts = fullCondition.split(" ");
-        
         document.getElementById("ruleId").value = id;
         document.getElementById("ruleSensor").value = parts[0];
         document.getElementById("ruleOperator").value = parts[1];
         document.getElementById("ruleThreshold").value = parts[2];
         document.getElementById("ruleActuator").value = actuator;
         document.getElementById("ruleAction").value = action;
-        
         ruleModal.show();
     }
 
     function saveRule() {
         const id = document.getElementById("ruleId").value;
-        const sensor = document.getElementById("ruleSensor").value;
-        const operator = document.getElementById("ruleOperator").value;
-        const threshold = document.getElementById("ruleThreshold").value;
-        const actuator = document.getElementById("ruleActuator").value;
-        const action = document.getElementById("ruleAction").value;
-
-        if(!threshold) {
-            alert("Please enter a valid threshold value!");
-            return;
-        }
-
-        const conditionString = `${sensor} ${operator} ${threshold}`;
         const payload = {
-            condition: conditionString,
-            actuator: actuator,
-            action_taken: action
+            condition: `${document.getElementById("ruleSensor").value} ${document.getElementById("ruleOperator").value} ${document.getElementById("ruleThreshold").value}`,
+            actuator: document.getElementById("ruleActuator").value,
+            action_taken: document.getElementById("ruleAction").value
         };
 
         const method = id ? 'PUT' : 'POST';
         const url = id ? `${API_BASE}/rules/${id}` : `${API_BASE}/rules`;
 
-        fetch(url, {
-            method: method,
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        })
-        .then(response => {
-            if(response.ok) {
-                ruleModal.hide();
-                loadRules(); // Ricarica la tabella per mostrare la nuova regola
-            } else {
-                alert("Errore durante il salvataggio della regola.");
-            }
-        })
-        .catch(err => console.error("Errore salvataggio:", err));
+        fetch(url, { method: method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+        .then(res => { if(res.ok) { ruleModal.hide(); loadRules(); } });
     }
 
-    function deleteRule(ruleId) {
-        if(confirm(`Are you sure you want to delete Rule ID ${ruleId}?`)) {
-            fetch(`${API_BASE}/rules/${ruleId}`, { method: 'DELETE' })
-            .then(response => {
-                if(response.ok) {
-                    loadRules(); // Ricarica la tabella per far sparire la riga
-                } else {
-                    alert("Errore durante l'eliminazione.");
-                }
-            })
-            .catch(err => console.error("Errore eliminazione:", err));
+    function deleteRule(id) {
+        if(confirm(`Delete Rule ID ${id}?`)) {
+            fetch(`${API_BASE}/rules/${id}`, { method: 'DELETE' }).then(res => { if(res.ok) loadRules(); });
         }
     }
 </script>

@@ -1,12 +1,8 @@
 services:
-
-  ### IMPORTANTE ###
-  #docker load -i mars-iot-simulator-oci.tar
-  #prima dle docker compose up, altrimenti non c'è l'immagine del simulatore
   simulator: 
     image: mars-iot-simulator:multiarch_v1
     ports:
-      - "8080:8080"   # opzionale ma utile per debug dall'host
+      - "8080:8080"
     networks:
       - mars_net
 
@@ -93,7 +89,7 @@ services:
       - mars_net
     restart: unless-stopped
 
-  # 5. BACKEND API (CRUD regole)
+  # 5. BACKEND
   backend:
     build:
       context: ./backend
@@ -111,7 +107,7 @@ services:
       - mars_net
     restart: unless-stopped
 
-  # 6. FRONTEND (static dashboard)
+  # 6. FRONTEND
   frontend:
     build:
       context: ./frontend

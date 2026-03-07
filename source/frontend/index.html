@@ -295,7 +295,6 @@
         }, POLLING_INTERVAL_MS);
     }
 
-    // (La tua funzione fetchSensorData() e updateDashboard() rimangono identiche)
 
 function fetchActuatorData() {
         fetch(`${API_BASE}/actuators`)
@@ -305,12 +304,11 @@ function fetchActuatorData() {
                 if (data && data.actuators) {
                     const attuatori = data.actuators;
                     
-                    // Cicliamo su ogni attuatore (es. "cooling_fan", "habitat_heater")
                     for (let id in attuatori) {
                         const switchEl = document.getElementById(`switch-${id}`);
-                        const state = attuatori[id]; // Sarà "ON" oppure "OFF"
+                        const state = attuatori[id]; 
                         
-                        // Se l'interruttore esiste nell'HTML, lo muoviamo!
+                        // Se l'interruttore esiste nell'HTML spostalo nello stato corretto
                         if (switchEl) {
                             switchEl.checked = (state === "ON");
                         }
@@ -324,7 +322,6 @@ function fetchSensorData() {
     fetch(`${API_BASE}/sensors/latest`)
         .then(res => res.json())
         .then(data => {
-            // 🔍 QUESTA È LA RIGA MAGICA DA RIATTIVARE
             console.log("DEBUG SENSORI:", data); 
             
             updateDashboard(data);

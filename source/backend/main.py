@@ -88,7 +88,6 @@ def get_conn():
 def get_sensors():
     return sensor_cache
 
-# ---> INSERISCI QUI IL NUOVO ENDPOINT <---
 @app.get("/api/actuators")
 def get_actuators():
     """Recupera lo stato attuale di tutti gli attuatori dal simulatore"""
@@ -99,7 +98,7 @@ def get_actuators():
         return res.json()
     except requests.RequestException:
         raise HTTPException(status_code=502, detail="Simulatore non raggiungibile")
-# -----------------------------------------
+
 
 @app.post("/api/actuators/{actuator_id}")
 def command_actuator(actuator_id: str, command: ActuatorCommand):

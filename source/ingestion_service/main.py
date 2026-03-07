@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 # Configurazione via variabili d'ambiente
 SIMULATOR_URL = os.getenv("SIMULATOR_URL", "http://localhost:8080")
 BROKER_URL = os.getenv("BROKER_URL", "amqp://guest:guest@localhost:5672/")
-POLL_INTERVAL = int(os.getenv("POLL_INTERVAL", "30"))
+POLL_INTERVAL = int(os.getenv("POLL_INTERVAL", "10"))
 
 def get_rabbitmq_channel():
     """Connessione resiliente a RabbitMQ."""
@@ -85,12 +85,12 @@ def poll_sensors(channel):
                 normalized_event = normalize_data(raw_data)
                 print(normalized_event)
                 # 4. Pubblica su RabbitMQ
-                #channel.basic_publish(
-                #    exchange='normalized_events',
-                #    routing_key='', 
-                #    body=json.dumps(normalized_event)
-                #)
-                #print(f"[x] Inviato: {sensor_id} | Status: {normalized_event['status']}")
+                channel.basic_publish(
+                    exchange='normalized_events',
+                    routing_key='', 
+                    body=json.dumps(normalized_event)
+                )
+                print(f"[x] Inviato: {sensor_id} | Status: {normalized_event['status']}")
                 
     except requests.exceptions.RequestException as e:
         print(f"[!] Errore di connessione al simulatore: {e}")
@@ -100,19 +100,19 @@ def main():
     time.sleep(5) # Piccola attesa iniziale
     channel = None
     connection = None
-    #while not connection:
-        #try:
-        #    connection, channel = get_rabbitmq_channel()
-        #    print("Connesso a RabbitMQ con successo!")
-        #except pika.exceptions.AMQPConnectionError:
-        #    print("In attesa di RabbitMQ...")
-        #    time.sleep(3)
+    while not connection:
+        try:
+            connection, channel = get_rabbitmq_channel()
+            print("Connesso a RabbitMQ con successo!")
+        except pika.exceptions.AMQPConnectionError:
+            print("In attesa di RabbitMQ...")
+            time.sleep(3)
 
     try:
         while True:
             poll_sensors(channel)
             time.sleep(POLL_INTERVAL)
-            break
+           
     except KeyboardInterrupt:
         print("Chiusura servizio...")
         if connection and not connection.is_closed:

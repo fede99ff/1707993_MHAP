@@ -1,7 +1,5 @@
-version: '3.8'
-
-
 services:
+  # 1.BROKER (RabbitMQ)
   broker:
     image: rabbitmq:3-management-alpine
     ports:
@@ -15,15 +13,54 @@ services:
       timeout: 5s
       retries: 5
 
+  # 2.DATABASE (MySQL)
+  db:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: root_password
+      MYSQL_DATABASE: rules_db
+      MYSQL_USER: mars_user
+      MYSQL_PASSWORD: mars_password
+    ports:
+      - "3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./init/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - mars_net
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # 3.INGESTOR 
   ingestion_service:
     build: 
       context: ./ingestion_service
     environment:
-      - SIMULATOR_URL=http://host.docker.internal:8080
+      # Ricorda: usa host.docker.internal se il simulatore gira fuori dal compose!
+      - SIMULATOR_URL=http://host.docker.internal:8080 
       - BROKER_URL=amqp://guest:guest@broker:5672/
-      - POLL_INTERVAL=5
     depends_on:
       broker:
+        condition: service_healthy
+    networks:
+      - mars_net
+
+  # 4.RULE ENGINE 
+  rule_engine:
+    build: 
+      context: ./rule_engine
+    environment:
+      - BROKER_URL=amqp://guest:guest@broker:5672/
+      # La stringa di connessione punta al servizio "db" sulla porta 3306
+      - DB_URL=mysql+pymysql://mars_user:mars_password@db:3306/rules_db
+      - SIMULATOR_URL=http://host.docker.internal:8080 # Gli serve per comandare gli attuatori
+    depends_on:
+      broker:
+        condition: service_healthy
+      db:
         condition: service_healthy
     networks:
       - mars_net
@@ -31,3 +68,6 @@ services:
 networks:
   mars_net:
     driver: bridge
+
+volumes:
+  db_data: # Salva i dati di MySQL in modo persistente

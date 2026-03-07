@@ -93,7 +93,6 @@ services:
       - mars_net
     restart: unless-stopped
 
-<<<<<<< HEAD
   # 5. BACKEND API (CRUD regole)
   backend:
     build:
@@ -125,28 +124,6 @@ services:
       - mars_net
     restart: unless-stopped
 
-=======
-  frontend:
-    build: 
-      context: ./frontend
-    ports:
-      - "80:80" # Mappa la porta 80 del tuo PC alla porta 80 del container
-    networks:
-      - mars_net
-  #  depends_on:
-  #    - dashboard_backend
-#
-  #dashboard_backend:
-  #  build:
-  #    context: ./dashboard_backend
-  #  ports:
-  #    - "8000:8000" # Mappa la porta 8000 per le API e i WebSocket
-  #  networks:
-  #    - mars_net
-    # depends_on:
-    #   - rabbitmq
-    #   - db
->>>>>>> 9bf39d4eb977f2254ef0b2779bcba3b09f58bb13
 networks:
   mars_net:
     driver: bridge

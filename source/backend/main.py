@@ -2,6 +2,7 @@ import os
 from typing import List, Optional
 
 import pymysql
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 

@@ -13,6 +13,7 @@ services:
   # 1.BROKER (RabbitMQ)
   broker:
     image: rabbitmq:3-management-alpine
+    user: "999:999"
     ports:
       - "5672:5672"
       - "15672:15672"
@@ -54,7 +55,8 @@ services:
       context: ./ingestion_service
     environment:
       # host.docker.internal se il simulatore gira fuori dal compose
-      - SIMULATOR_URL=http://host.docker.internal:8080 #SIMULATOR_URL: http://simulator:8080
+      #- SIMULATOR_URL=http://host.docker.internal:8080 
+      - SIMULATOR_URL=http://simulator:8080
       - BROKER_URL=amqp://guest:guest@broker:5672/
     depends_on:
       broker:
@@ -71,9 +73,15 @@ services:
       context: ./rule_engine
     environment:
       - BROKER_URL=amqp://guest:guest@broker:5672/
+      - DB_HOST=db
+      - DB_USER=mars_user
+      - DB_PASSWORD=mars_password
+      - DB_NAME=rules_db
       # La stringa di connessione punta al servizio "db" sulla porta 3306
       - DB_URL=mysql+pymysql://mars_user:mars_password@db:3306/rules_db
-      - SIMULATOR_URL=http://host.docker.internal:8080 # Gli serve per comandare gli attuatori
+      # host.docker.internal se il simulatore gira fuori dal compose
+      #- SIMULATOR_URL=http://host.docker.internal:8080 
+      - SIMULATOR_URL=http://simulator:8080
     depends_on:
       broker:
         condition: service_healthy
@@ -81,6 +89,37 @@ services:
         condition: service_healthy
       simulator:
         condition: service_started
+    networks:
+      - mars_net
+    restart: unless-stopped
+
+  # 5. BACKEND API (CRUD regole)
+  backend:
+    build:
+      context: ./backend
+    environment:
+      - DB_HOST=db
+      - DB_USER=mars_user
+      - DB_PASSWORD=mars_password
+      - DB_NAME=rules_db
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    networks:
+      - mars_net
+    restart: unless-stopped
+
+  # 6. FRONTEND (static dashboard)
+  frontend:
+    build:
+      context: ./frontend
+    depends_on:
+      backend:
+        condition: service_started
+    ports:
+      - "3000:3000"
     networks:
       - mars_net
     restart: unless-stopped

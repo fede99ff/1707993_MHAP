@@ -49,7 +49,7 @@ def valuta_condizione(valore_sensore, operatore, soglia):
         if operatore == '<': return val < soglia
         if operatore == '>=': return val >= soglia
         if operatore == '<=': return val <= soglia
-        if operatore == '==': return val == soglia
+        if operatore in ('==', '='): return val == soglia
     except ValueError:
         pass
     return False
@@ -101,9 +101,7 @@ def callback(ch, method, properties, body):
     try:
         connection = get_db_connection()
         with connection.cursor() as cursor:
-            # Trucco SQL: Cerchiamo le regole la cui colonna 'condition' INIZIA con il nome del sensore
-            # es. "greenhouse_temperature %"
-            sql = "SELECT * FROM rules WHERE `condition` LIKE %s"
+            sql = "SELECT * FROM rules WHERE enabled = TRUE AND `condition` LIKE %s" #per regole anche dopo restart
             cursor.execute(sql, (f"{sensor_id} %",))
             regole = cursor.fetchall()
 

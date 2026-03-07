@@ -54,20 +54,22 @@ def valuta_condizione(valore_sensore, operatore, soglia):
         pass
     return False
 
-def estrai_valore_da_payload(payload):
+def estrai_valore_da_payload(payload: dict):
     
     #I sensori hanno formati diversi (es. 'value' per temp, 'pm25' per aria).
     #Questa funzione cerca il numero giusto da controllare.
-    
-    if "value" in payload:
+    if not isinstance(payload, dict):
+        return None
+
+    if "value" in payload and isinstance(payload["value"], (int, float)):
         return payload["value"]
-    elif "pm25" in payload:
-        return payload["pm25"]
-    elif "level_pct" in payload:
-        return payload["level_pct"]
-    elif "measurements" in payload:
-        # Per i sensori chimici, peschiamo il primo valore utile
-        return list(payload["measurements"].values())[0]
+
+    meas = payload.get("measurements")
+    if isinstance(meas, list) and len(meas) > 0 and isinstance(meas[0], dict):
+        v = meas[0].get("value")
+        return v if isinstance(v, (int, float)) else None
+
+
     return None
 
 def trigger_actuator(actuator_id, target_state):
@@ -90,8 +92,8 @@ def callback(ch, method, properties, body):
     payload = evento.get("payload", {})
     
     valore_attuale = estrai_valore_da_payload(payload)
-    print(evento, "\n", sensor_id, "\n", payload, "\n", valore_attuale)
     if valore_attuale is None:
+        print(f"[rule_engine] payload non supportato per regole: {payload}")
         return # Ignora se non riusciamo a estrarre un numero valido
 
     print(f"\n[DATO RICEVUTO] {sensor_id}: {valore_attuale}")

@@ -1,15 +1,14 @@
 services:
-  #simulator:
-  #  image: SIMULATOR_IMAGE:TAG
-  #  ports:
-  #    - "8080:8080" 
-  #  networks:
-  #    - mars_net
-  #  healthcheck:
-  #    test: ["CMD", "sh", "-c", "wget -qO- http://localhost:8080/api/sensors >/dev/null 2>&1"]
-  #    interval: 5s
-  #    timeout: 5s
-  #    retries: 30
+
+  ### IMPORTANTE ###
+  #docker load -i mars-iot-simulator-oci.tar
+  #prima dle docker compose up, altrimenti non c'è l'immagine del simulatore
+  simulator: 
+    image: mars-iot-simulator:multiarch_v1
+    ports:
+      - "8080:8080"   # opzionale ma utile per debug dall'host
+    networks:
+      - mars_net
 
   # 1.BROKER (RabbitMQ)
   broker:
@@ -60,8 +59,8 @@ services:
     depends_on:
       broker:
         condition: service_healthy
-      #simulator:
-      #  condition: service_healthy
+      simulator:
+        condition: service_started
     networks:
       - mars_net
 
@@ -79,8 +78,8 @@ services:
         condition: service_healthy
       db:
         condition: service_healthy
-      #simulator:
-      #  condition: service_healthy
+      simulator:
+        condition: service_started
     networks:
       - mars_net
 

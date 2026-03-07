@@ -1,7 +1,8 @@
-FROM python:3.11-slim
+# Usiamo Nginx
+FROM nginx:alpine
 
-WORKDIR /app
-COPY index.html .
+# Copiamo l'HTML
+COPY index.html /usr/share/nginx/html/index.html
 
-EXPOSE 3000
-CMD ["python", "-m", "http.server", "3000"]
+# Esponiamo la porta 80
+EXPOSE 80

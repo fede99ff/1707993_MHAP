@@ -119,7 +119,7 @@ services:
       backend:
         condition: service_started
     ports:
-      - "3000:3000"
+      - "3000:80"
     networks:
       - mars_net
     restart: unless-stopped

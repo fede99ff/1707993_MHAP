@@ -272,7 +272,8 @@
         setTimeout(() => {
             console.log("Richiesta iniziale dei dati al backend...");
             loadRules();
-            startSensorPolling();
+            startSensorSSE();  
+            startActuatorPolling();
         }, 1000);
     });
 
@@ -283,17 +284,55 @@
 
     // --- SENSORI (POLLING REST) ---
 
-    function startSensorPolling() {
-        // Prima chiamata immediata
-        fetchSensorData();
-        fetchActuatorData(); 
-        
-        // Timer ciclico
-        setInterval(() => {
-            fetchSensorData();
-            fetchActuatorData();
-        }, POLLING_INTERVAL_MS);
+    let sensorEventSource = null;
+
+    function startSensorSSE() {
+    // 1) Primo caricamento (utile anche se SSE tarda ad arrivare)
+    fetchSensorData();
+
+    // 2) Stream SSE
+    const streamUrl = `${API_BASE}/sensors/stream`;
+    sensorEventSource = new EventSource(streamUrl);
+
+    // Se il backend manda "event: sensors"
+    sensorEventSource.addEventListener("sensors", (event) => {
+        try {
+        const data = JSON.parse(event.data);
+        updateDashboard(data);
+        updateTimestamp();
+        } catch (e) {
+        console.error("❌ SSE payload non valido:", e, event.data);
+        }
+    });
+
+    // Fallback: se il backend manda solo "data: ..."
+    sensorEventSource.onmessage = (event) => {
+        try {
+        const data = JSON.parse(event.data);
+        updateDashboard(data);
+        updateTimestamp();
+        } catch (e) {
+        // ignora se già gestito da addEventListener("sensors", ...)
+        }
+    };
+
+    sensorEventSource.onerror = () => {
+        // EventSource fa reconnect automatico
+        console.warn("⚠️ SSE error/disconnect: retry automatico...");
+    };
     }
+
+
+// --- ATTUATORI (POLLING REST) ---
+function startActuatorPolling() {
+  // Prima chiamata immediata
+  fetchActuatorData();
+
+  // Timer ciclico
+  setInterval(() => {
+    fetchActuatorData();
+  }, POLLING_INTERVAL_MS);
+}
 
 
 function fetchActuatorData() {

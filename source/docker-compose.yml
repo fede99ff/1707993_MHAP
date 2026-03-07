@@ -45,9 +45,9 @@ services:
       - mars_net
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-proot_password"]
-      retries: 30
       interval: 5s
-      timeout: 5s
+      timeout: 3s
+      retries: 30
 
   # 3.INGESTOR 
   ingestion_service:

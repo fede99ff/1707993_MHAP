@@ -4,6 +4,10 @@ import json
 import time
 from typing import List, Optional
 
+import asyncio
+import json
+from fastapi.responses import StreamingResponse
+
 import pika
 import pymysql
 import requests
@@ -78,15 +82,53 @@ class RuleOut(RuleIn):
 class ActuatorCommand(BaseModel):
     state: str
 
-def get_conn():
-    return pymysql.connect(host=DB_HOST, user=DB_USER, password=DB_PASSWORD, database=DB_NAME, cursorclass=pymysql.cursors.DictCursor, autocommit=True)
 
+def get_conn(retries: int = 20, delay_s: float = 1.0):
+    last_exc = None
+    for i in range(retries):
+        try:
+            return pymysql.connect(
+                host=DB_HOST,
+                user=DB_USER,
+                password=DB_PASSWORD,
+                database=DB_NAME,
+                cursorclass=pymysql.cursors.DictCursor,
+                autocommit=True,
+                connect_timeout=3,
+            )
+        except Exception as e:
+            last_exc = e
+            print(f"[backend] DB non pronto (tentativo {i+1}/{retries}): {e}")
+            time.sleep(delay_s)
+    raise last_exc
 
 # --- ENDPOINT SENSORI E ATTUATORI ---
 
 @app.get("/api/sensors/latest")
 def get_sensors():
     return sensor_cache
+
+@app.get("/api/sensors/stream")
+async def sensors_stream():
+    async def event_generator():
+        # facciamo push periodico: minimo, robusto, zero refactor
+        last_payload = None
+        while True:
+            payload = json.dumps(sensor_cache)  # sensor_cache già esiste nel tuo backend
+            # opzionale: invia solo se cambia (riduce traffico)
+            if payload != last_payload:
+                yield f"event: sensors\ndata: {payload}\n\n"
+                last_payload = payload
+
+            # keep-alive / ritmo aggiornamenti
+            await asyncio.sleep(1)
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
+
+
+
+
+
 
 @app.get("/api/actuators")
 def get_actuators():
@@ -109,6 +151,9 @@ def command_actuator(actuator_id: str, command: ActuatorCommand):
         return {"status": "success"}
     except requests.RequestException:
         raise HTTPException(status_code=502, detail="Simulatore non raggiungibile")
+    
+
+
 
 
 # --- ENDPOINT REGOLE (CRUD) ---

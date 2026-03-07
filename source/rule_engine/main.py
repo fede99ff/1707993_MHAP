@@ -24,6 +24,22 @@ def get_db_connection():
         cursorclass=pymysql.cursors.DictCursor
     )
 
+import time
+import pika
+
+def connect_with_retry(parameters, attempts=30, base_sleep=1.0, max_sleep=10.0):
+    sleep_s = base_sleep
+    last_err = None
+    for i in range(1, attempts + 1):
+        try:
+            return pika.BlockingConnection(parameters)
+        except Exception as e:
+            last_err = e
+            print(f"[rule_engine] RabbitMQ non pronto (tentativo {i}/{attempts}): {e}")
+            time.sleep(sleep_s)
+            sleep_s = min(max_sleep, sleep_s * 1.5)
+    raise last_err
+
 def valuta_condizione(valore_sensore, operatore, soglia):
     #Fa il confronto matematico tra il dato letto e la regola del DB.
     try:
@@ -118,7 +134,7 @@ def main():
     time.sleep(15) 
 
     parameters = pika.URLParameters(BROKER_URL)
-    connection = pika.BlockingConnection(parameters)
+    connection = connect_with_retry(parameters)
     channel = connection.channel()
 
     # Dichiariamo l'exchange e la coda

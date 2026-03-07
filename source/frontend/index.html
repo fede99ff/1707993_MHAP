@@ -259,11 +259,14 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
 <script>
+    // --- CONFIGURAZIONE URL BACKEND ---
+    const API_BASE = "http://localhost:8000/api";
+    const WS_URL = "ws://localhost:8000/ws/live-data";
+
     let ruleModal; // Variabile globale per controllare il pop-up
 
     // Inizializzazione al caricamento della pagina
     window.onload = function() {
-        // Inizializza il componente Modal di Bootstrap
         ruleModal = new bootstrap.Modal(document.getElementById('ruleModal'));
         connectWebSocket();
         loadRules();
@@ -280,14 +283,29 @@
     function toggleActuator(actuatorId, isChecked) {
         const state = isChecked ? "ON" : "OFF";
         console.log(`[API Request] Setting ${actuatorId} to ${state}`);
-        // Qui andrà la fetch() al backend
+        
+        // Invia la richiesta HTTP POST al backend
+        fetch(`${API_BASE}/actuators/${actuatorId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ state: state })
+        })
+        .then(response => {
+            if(!response.ok) alert(`Errore nell'impostare l'attuatore ${actuatorId}`);
+        })
+        .catch(err => console.error("Errore di rete:", err));
     }
 
     // --- 2. WEBSOCKET FOR LIVE DATA ---
     function connectWebSocket() {
-        console.log("Waiting for backend API to establish WebSocket connection...");
-        /*
-        const ws = new WebSocket("ws://localhost:8000/ws/live-data");
+        console.log("Connessione al WebSocket in corso...");
+        
+        const ws = new WebSocket(WS_URL);
+        
+        ws.onopen = () => console.log("✅ WebSocket connesso con successo!");
+        ws.onerror = (err) => console.error("❌ Errore WebSocket. Il backend è acceso?", err);
+        ws.onclose = () => console.log("⚠️ WebSocket disconnesso.");
+
         ws.onmessage = function(event) {
             const data = JSON.parse(event.data);
             
@@ -319,12 +337,38 @@
                 }
             }
         };
-        */
     }
 
     // --- 3. RULE ENGINE CRUD & MODAL ---
     function loadRules() {
-        console.log("Waiting for backend API to load rules from MySQL...");
+        console.log("Caricamento regole dal database...");
+        fetch(`${API_BASE}/rules`)
+            .then(res => res.json())
+            .then(rules => {
+                const tbody = document.getElementById("rules-table-body");
+                tbody.innerHTML = ""; // Svuota i dati finti
+
+                // Genera la tabella dinamicamente con i dati veri
+                rules.forEach(r => {
+                    const row = `
+                        <tr>
+                            <td>${r.id}</td>
+                            <td><code>${r.condition}</code></td>
+                            <td><strong>${r.actuator}</strong></td>
+                            <td><span class="badge ${r.action_taken === 'ON' ? 'bg-success' : 'bg-danger'}">${r.action_taken}</span></td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-primary" onclick="editRule(${r.id}, '${r.condition}', '${r.actuator}', '${r.action_taken}')">Edit</button>
+                                <button class="btn btn-sm btn-outline-danger" onclick="deleteRule(${r.id})">Delete</button>
+                            </td>
+                        </tr>
+                    `;
+                    tbody.innerHTML += row;
+                });
+            })
+            .catch(err => {
+                console.error("Errore caricamento regole:", err);
+                document.getElementById("rules-table-body").innerHTML = `<tr><td colspan="5" class="text-center text-danger">⚠️ Impossibile caricare le regole dal backend</td></tr>`;
+            });
     }
 
     function openAddRuleModal() {
@@ -335,7 +379,7 @@
     }
 
     function editRule(id, fullCondition, actuator, action) {
-        document.getElementById("ruleModalLabel").innerText = `✏️ Edit Rule #${id}`;
+        document.getElementById("ruleModalLabel").innerText = `Edit Rule Number ${id}`;
         
         const parts = fullCondition.split(" ");
         
@@ -369,18 +413,36 @@
             action_taken: action
         };
 
-        if(id) {
-            console.log(`[API Request] Updating Rule ${id}:`, payload);
-        } else {
-            console.log(`[API Request] Creating New Rule:`, payload);
-        }
+        const method = id ? 'PUT' : 'POST';
+        const url = id ? `${API_BASE}/rules/${id}` : `${API_BASE}/rules`;
 
-        ruleModal.hide();
+        fetch(url, {
+            method: method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        })
+        .then(response => {
+            if(response.ok) {
+                ruleModal.hide();
+                loadRules(); // Ricarica la tabella per mostrare la nuova regola
+            } else {
+                alert("Errore durante il salvataggio della regola.");
+            }
+        })
+        .catch(err => console.error("Errore salvataggio:", err));
     }
 
     function deleteRule(ruleId) {
         if(confirm(`Are you sure you want to delete Rule ID ${ruleId}?`)) {
-            console.log(`[API Request] Deleting rule ID: ${ruleId}`);
+            fetch(`${API_BASE}/rules/${ruleId}`, { method: 'DELETE' })
+            .then(response => {
+                if(response.ok) {
+                    loadRules(); // Ricarica la tabella per far sparire la riga
+                } else {
+                    alert("Errore durante l'eliminazione.");
+                }
+            })
+            .catch(err => console.error("Errore eliminazione:", err));
         }
     }
 </script>

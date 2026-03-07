@@ -10,8 +10,16 @@ DB_USER = os.getenv("DB_USER", "mars_user")
 DB_PASSWORD = os.getenv("DB_PASSWORD", "mars_password")
 DB_NAME = os.getenv("DB_NAME", "rules_db")
 
+
 app = FastAPI(title="Mars Rules Backend")
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  
+    allow_credentials=True,
+    allow_methods=["*"], 
+    allow_headers=["*"],
+)
 
 def get_conn():
     return pymysql.connect(

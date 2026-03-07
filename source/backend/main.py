@@ -14,6 +14,8 @@ import requests
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
+from fastapi import HTTPException
+
 
 # --- VARIABILI D'AMBIENTE ---
 DB_HOST = os.getenv("DB_HOST", "db")
@@ -56,8 +58,24 @@ def rabbitmq_consumer():
     def callback(ch, method, properties, body):
         try:
             event = json.loads(body)
-            if event.get("source") and event.get("payload"):
-                sensor_cache[event["source"]] = event["payload"]
+            if event.get("source"):
+                sid = event["source"]
+
+                # tieni in cache tutto l'evento (o un subset controllato)
+                new_ts = event.get("processed_at")
+
+                old = sensor_cache.get(sid)
+                old_ts = old.get("processed_at") if isinstance(old, dict) else None
+
+                # update idempotente "best effort" su processed_at (ISO string compare funziona se ISO ben formattato)
+                if (old is None) or (old_ts is None) or (new_ts is None) or (new_ts >= old_ts):
+                    sensor_cache[sid] = {
+                        "source": sid,
+                        "type": event.get("type"),
+                        "status": event.get("status"),
+                        "processed_at": new_ts,
+                        "payload": event.get("payload", {}),
+                    }
         except Exception:
             pass
 
@@ -108,6 +126,13 @@ def get_conn(retries: int = 20, delay_s: float = 1.0):
 def get_sensors():
     return sensor_cache
 
+@app.get("/api/sensors/latest/{sensor_id}")
+def get_sensor_latest(sensor_id: str):
+    s = sensor_cache.get(sensor_id)
+    if not s:
+        raise HTTPException(status_code=404, detail="Sensor not found in cache yet")
+    return s
+
 @app.get("/api/sensors/stream")
 async def sensors_stream():
     async def event_generator():
@@ -124,6 +149,47 @@ async def sensors_stream():
             await asyncio.sleep(1)
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")
+
+
+
+
+
+
+
+
+from datetime import datetime, timezone
+
+def _parse_iso(ts: str):
+    if not ts:
+        return None
+    if ts.endswith("Z"):
+        ts = ts[:-1] + "+00:00"
+    return datetime.fromisoformat(ts)
+
+@app.get("/api/sensors/latest/{sensor_id}/fresh")
+def get_sensor_latest_fresh(sensor_id: str, max_age_s: int = 30):
+    s = sensor_cache.get(sensor_id)
+    if not s:
+        raise HTTPException(status_code=404, detail="Sensor not found in cache yet")
+
+    dt = _parse_iso(s.get("processed_at"))
+    if not dt:
+        return {"state": s, "stale": False, "age_s": None}
+
+    now = datetime.now(timezone.utc)
+    age = (now - dt).total_seconds()
+    return {"state": s, "stale": age > max_age_s, "age_s": age}
+
+
+
+
+
+
+
+
+
+
+
 
 
 

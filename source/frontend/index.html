@@ -323,6 +323,28 @@
     }
 
 
+function extractReading(sensorState) {
+  // supporta sia vecchio formato (payload già piatto) sia nuovo (wrapper con payload)
+  const p = sensorState?.payload ?? sensorState ?? {};
+
+  // caso standard: { value, unit }
+  if (typeof p.value === "number") return { value: p.value, unit: p.unit };
+
+  // caso measurements: { measurements: [{metric,value,unit}, ...] }
+  if (Array.isArray(p.measurements) && typeof p.measurements[0]?.value === "number") {
+    return { value: p.measurements[0].value, unit: p.measurements[0].unit, metric: p.measurements[0].metric };
+  }
+
+  // casi speciali: serbatoio
+  if (typeof p.level_pct === "number") return { value: p.level_pct, unit: "%" };
+
+  // air quality: scegli pm25 come default
+  if (typeof p.pm25 === "number") return { value: p.pm25, unit: "µg/m³", metric: "pm25" };
+
+  return null; // non interpretabile
+}
+
+
 // --- ATTUATORI (POLLING REST) ---
 function startActuatorPolling() {
   // Prima chiamata immediata
@@ -368,59 +390,58 @@ function fetchSensorData() {
         .catch(err => console.error("ERRORE FETCH:", err));
 }
 
+const sensors = [
+  "greenhouse_temperature",
+  "entrance_humidity",
+  "co2_hall",
+  "hydroponic_ph",
+  "water_tank_level",
+  "corridor_pressure",
+  "air_quality_voc",
+  "air_quality_pm25" // attenzione: questo è il "sensore" che contiene pm1/pm25/pm10
+];
+
+function updateAirQualityPM(data) {
+  const state = data?.air_quality_pm25;
+  const p = state?.payload ?? state ?? {};
+
+  const elPm1 = document.getElementById("val-air_quality-pm1");
+  const elPm25 = document.getElementById("val-air_quality-pm25");
+  const elPm10 = document.getElementById("val-air_quality-pm10");
+
+  if (elPm1)  elPm1.innerText  = (typeof p.pm1  === "number") ? p.pm1.toFixed(2)  : "--";
+  if (elPm25) elPm25.innerText = (typeof p.pm25 === "number") ? p.pm25.toFixed(2) : "--";
+  if (elPm10) elPm10.innerText = (typeof p.pm10 === "number") ? p.pm10.toFixed(2) : "--";
+}
+
 function updateDashboard(data) {
-    const sensors = [
-        "greenhouse_temperature", "entrance_humidity", "co2_hall", 
-        "hydroponic_ph", "water_tank_level", "corridor_pressure", "air_quality_voc"
-    ];
+  // 1) caso speciale: PM1/PM2.5/PM10
+  updateAirQualityPM(data);
 
-    sensors.forEach(id => {
-        const element = document.getElementById(`val-${id}`);
-        if (element && data[id]) {
-            let val = data[id];
-            let finalValue = "--";
+  // 2) sensori "normali" che hanno un singolo valore nel DOM: val-<id>
+  sensors.forEach((id) => {
+    // salta air_quality_pm25 perché già gestito sopra (altrimenti cerchi val-air_quality_pm25 che in HTML non c’è)
+    if (id === "air_quality_pm25") return;
 
-            // 1. Se ha la chiave .value (es. CO2, Pressione, Temperatura)
-            if (val.value !== undefined) {
-                finalValue = val.value;
-            } 
-            // 2. Se ha la chiave .level_pct (es. Water Tank)
-            else if (val.level_pct !== undefined) {
-                finalValue = val.level_pct;
-            }
-            // 3. Se ha .measurements (VOC e pH) - PRENDIAMO IL PRIMO VALORE
-            else if (val.measurements && Array.isArray(val.measurements)) {
-                // Se è un array di oggetti tipo [{value: 6.5}], prendiamo il .value
-                // Se è un array di numeri tipo [6.5], prendiamo il numero
-                let firstMeasure = val.measurements[0];
-                finalValue = (typeof firstMeasure === 'object') ? (firstMeasure.value || firstMeasure.voc_ppb) : firstMeasure;
-            }
-            // 4. Fallback: se è un oggetto generico, prendi il primo valore che trovi
-            else if (typeof val === 'object') {
-                finalValue = Object.values(val)[0];
-            } else {
-                finalValue = val;
-            }
+    const element = document.getElementById(`val-${id}`);
+    if (!element) return;
 
-            // Formattazione estetica
-            if (typeof finalValue === 'number') {
-                element.innerText = finalValue.toFixed(2);
-            } else {
-                element.innerText = finalValue || "--";
-            }
-        }
-    });
-
-    // Gestione PM2.5 (già corretta nel tuo log)
-    if (data["air_quality_pm25"]) {
-        const pm = data["air_quality_pm25"];
-        document.getElementById("val-air_quality-pm1").innerText = pm.pm1.toFixed(2);
-        document.getElementById("val-air_quality-pm25").innerText = pm.pm25.toFixed(2);
-        document.getElementById("val-air_quality-pm10").innerText = pm.pm10.toFixed(2);
+    const sensorState = data?.[id];
+    if (!sensorState) {
+      element.innerText = "--";
+      return;
     }
-    
-    document.getElementById("last-update-time").innerText = new Date().toLocaleTimeString();
+
+    const r = extractReading(sensorState);
+    if (!r || typeof r.value !== "number") {
+      console.warn("⚠️ Lettura non interpretabile per", id, sensorState);
+      element.innerText = "--";
+      return;
     }
+
+    element.innerText = r.value.toFixed(2) + (r.unit ? ` ${r.unit}` : "");
+  });
+}
 
     // --- ATTUATORI ---
     function toggleActuator(actuatorId, isChecked) {

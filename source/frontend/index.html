@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mars Habitat Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f4f6f9; padding: 20px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .card { margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border: none; border-radius: 10px; }
+        .sensor-value { font-size: 1.75rem; font-weight: bold; color: #0d6efd; margin-top: 10px; transition: color 0.3s ease; }
+        .sensor-title { font-size: 1rem; color: #6c757d; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+        .actuator-switch .form-check-input { width: 3em; height: 1.5em; cursor: pointer; }
+        .actuator-switch .form-check-label { font-size: 1.1rem; margin-left: 10px; margin-top: 2px; cursor: pointer; font-weight: 500; }
+    </style>
+</head>
+<body>
+
+<div class="container mt-4">
+    <h2 class="mb-4 text-center fw-bold">🚀 Mars Habitat Command Center</h2>
+
+    <div class="d-flex justify-content-between align-items-end border-bottom pb-2 mb-3">
+        <h4 class="mb-0">📡 Sensors readings</h4>
+        <small class="text-muted">Last update: <span id="last-update-time" class="fw-bold text-success">--:--:--</span></small>
+    </div>
+    
+    <div class="row" id="sensors-container">
+        <div class="col-md-3">
+            <div class="card p-3 h-100 ">
+                <div class="sensor-title">🌡️ Greenhouse Temp</div>
+                <div class="d-flex align-items-baseline">
+                    <p class="sensor-value mb-0" id="val-greenhouse_temperature">--</p>
+                    <span class="ms-1 text-muted">°C</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card p-3 h-100">
+                <div class="sensor-title">💧 Entrance Humidity</div>
+                <div class="d-flex align-items-baseline">
+                    <p class="sensor-value mb-0" id="val-entrance_humidity">--</p>
+                    <span class="ms-1 text-muted">%</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card p-3 h-100">
+                <div class="sensor-title">💨 Air Quality (µg/m³)</div>
+                <div class="d-flex justify-content-between mt-2">
+                    <div class="text-center">
+                        <small class="text-muted fw-bold">PM1</small>
+                        <div class="sensor-value fs-5 mt-0" id="val-air_quality-pm1">--</div>
+                    </div>
+                    <div class="text-center">
+                        <small class="text-muted fw-bold">PM2.5</small>
+                        <div class="sensor-value fs-5 mt-0" id="val-air_quality-pm25">--</div>
+                    </div>
+                    <div class="text-center">
+                        <small class="text-muted fw-bold">PM10</small>
+                        <div class="sensor-value fs-5 mt-0" id="val-air_quality-pm10">--</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card p-3 h-100">
+                <div class="sensor-title">😶‍🌫️ Hall CO2</div>
+                <div class="d-flex align-items-baseline">
+                    <p class="sensor-value mb-0" id="val-co2_hall">--</p>
+                    <span class="ms-1 text-muted">ppm</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3 mt-2">
+            <div class="card p-3 h-100 ">
+                <div class="sensor-title">🧪 Hydroponic pH</div>
+                <p class="sensor-value" id="val-hydroponic_ph">--</p>
+            </div>
+        </div>
+
+        <div class="col-md-3 mt-2">
+            <div class="card p-3 h-100">
+                <div class="sensor-title">🌊 Water Tank Level</div>
+                <div class="d-flex align-items-baseline">
+                    <p class="sensor-value mb-0" id="val-water_tank_level">--</p>
+                    <span class="ms-1 text-muted">%</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3 mt-2">
+            <div class="card p-3 h-100">
+                <div class="sensor-title">⏱️ Corridor Pressure</div>
+                <div class="d-flex align-items-baseline">
+                    <p class="sensor-value mb-0" id="val-corridor_pressure">--</p>
+                    <span class="ms-1 text-muted">Pa</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3 mt-2">
+            <div class="card p-3 h-100 ">
+                <div class="sensor-title">🌫️ Air Quality (VOC)</div>
+                <div class="d-flex align-items-baseline">
+                    <p class="sensor-value mb-0" id="val-air_quality_voc">--</p>
+                    <span class="ms-1 text-muted">ppb</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <h4 class="mt-4 mb-3 border-bottom pb-2">🕹️ Manual Actuator Control</h4>
+    <div class="card p-3 bg-white">
+        <div class="row text-center">
+            
+            <div class="col-md-3 border-end">
+                <div class="form-check form-switch d-flex justify-content-center align-items-center actuator-switch">
+                    <input class="form-check-input" type="checkbox" id="switch-cooling_fan" onchange="toggleActuator('cooling_fan', this.checked)">
+                    <label class="form-check-label" for="switch-cooling_fan">❄️ Cooling Fan</label>
+                </div>
+            </div>
+
+            <div class="col-md-3 border-end">
+                <div class="form-check form-switch d-flex justify-content-center align-items-center actuator-switch">
+                    <input class="form-check-input" type="checkbox" id="switch-habitat_heater" onchange="toggleActuator('habitat_heater', this.checked)">
+                    <label class="form-check-label" for="switch-habitat_heater">🔥 Habitat Heater</label>
+                </div>
+            </div>
+
+            <div class="col-md-3 border-end">
+                <div class="form-check form-switch d-flex justify-content-center align-items-center actuator-switch">
+                    <input class="form-check-input" type="checkbox" id="switch-entrance_humidifier" onchange="toggleActuator('entrance_humidifier', this.checked)">
+                    <label class="form-check-label" for="switch-entrance_humidifier">💦 Humidifier</label>
+                </div>
+            </div>
+
+            <div class="col-md-3">
+                <div class="form-check form-switch d-flex justify-content-center align-items-center actuator-switch">
+                    <input class="form-check-input" type="checkbox" id="switch-hall_ventilation" onchange="toggleActuator('hall_ventilation', this.checked)">
+                    <label class="form-check-label" for="switch-hall_ventilation">🌬️ Hall Ventilation</label>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <h4 class="mt-5 mb-3 border-bottom pb-2">⚙️ Automation Rules</h4>
+    <div class="card p-3 bg-white">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>ID</th>
+                        <th>Condition (Sensor > Threshold)</th>
+                        <th>Actuator Target</th>
+                        <th>Action</th>
+                        <th>Manage</th>
+                    </tr>
+                </thead>
+                <tbody id="rules-table-body">
+                    <tr>
+                        <td>1</td>
+                        <td><code>greenhouse_temperature > 30.0</code></td>
+                        <td><strong>cooling_fan</strong></td>
+                        <td><span class="badge bg-success">ON</span></td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-primary" onclick="editRule(1, 'greenhouse_temperature > 30.0', 'cooling_fan', 'ON')">Edit</button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteRule(1)">Delete</button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="mt-2">
+            <button class="btn btn-primary btn-sm" onclick="openAddRuleModal()">+ Add New Rule</button>
+        </div>
+    </div>
+
+</div>
+
+<div class="modal fade" id="ruleModal" tabindex="-1" aria-labelledby="ruleModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="ruleModalLabel">🛠️ Configure Automation Rule</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="ruleForm">
+                    <input type="hidden" id="ruleId">
+
+                    <h6 class="border-bottom pb-1 mb-3">1. When this happens...</h6>
+                    
+                    <div class="mb-3">
+                        <label class="form-label text-muted small fw-bold">Select Sensor</label>
+                        <select class="form-select" id="ruleSensor" required>
+                            <option value="greenhouse_temperature">🌡️ Greenhouse Temperature</option>
+                            <option value="entrance_humidity">💧 Entrance Humidity</option>
+                            <option value="air_quality_pm25">💨 Air Quality (PM2.5/PM1/PM10)</option>
+                            <option value="co2_hall">😶‍🌫️ Hall CO2</option>
+                            <option value="hydroponic_ph">🧪 Hydroponic pH</option>
+                            <option value="water_tank_level">🌊 Water Tank Level</option>
+                            <option value="corridor_pressure">⏱️ Corridor Pressure</option>
+                            <option value="air_quality_voc">🌫️ Air Quality (VOC)</option>
+                        </select>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <label class="form-label text-muted small fw-bold">Operator</label>
+                            <select class="form-select" id="ruleOperator" required>
+                                <option value=">">Greater than (>)</option>
+                                <option value=">=">Greater than or equal to (>=)</option>
+                                <option value="<">Less than (<)</option>
+                                <option value="<=">Less than or equal to (<=)</option>
+                                <option value="==">Equal to (==)</option>
+                            </select>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label text-muted small fw-bold">Threshold Value</label>
+                            <input type="number" step="0.1" class="form-control" id="ruleThreshold" placeholder="e.g. 30.5" required>
+                        </div>
+                    </div>
+
+                    <h6 class="border-bottom pb-1 mb-3 mt-4">2. Do this...</h6>
+                    
+                    <div class="row mb-3">
+                        <div class="col-8">
+                            <label class="form-label text-muted small fw-bold">Target Actuator</label>
+                            <select class="form-select" id="ruleActuator" required>
+                                <option value="cooling_fan">❄️ Cooling Fan</option>
+                                <option value="habitat_heater">🔥 Habitat Heater</option>
+                                <option value="entrance_humidifier">💦 Entrance Humidifier</option>
+                                <option value="hall_ventilation">🌬️ Hall Ventilation</option>
+                            </select>
+                        </div>
+                        <div class="col-4">
+                            <label class="form-label text-muted small fw-bold">Action</label>
+                            <select class="form-select" id="ruleAction" required>
+                                <option value="ON">Turn ON</option>
+                                <option value="OFF">Turn OFF</option>
+                            </select>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="saveRule()">💾 Save Rule</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+    let ruleModal; // Variabile globale per controllare il pop-up
+
+    // Inizializzazione al caricamento della pagina
+    window.onload = function() {
+        // Inizializza il componente Modal di Bootstrap
+        ruleModal = new bootstrap.Modal(document.getElementById('ruleModal'));
+        connectWebSocket();
+        loadRules();
+    };
+
+    // --- TIMESTAMP UPDATE ---
+    function updateTimestamp() {
+        const now = new Date();
+        const timeString = now.toLocaleTimeString(); 
+        document.getElementById("last-update-time").innerText = timeString;
+    }
+
+    // --- 1. ACTUATORS MANAGEMENT ---
+    function toggleActuator(actuatorId, isChecked) {
+        const state = isChecked ? "ON" : "OFF";
+        console.log(`[API Request] Setting ${actuatorId} to ${state}`);
+        // Qui andrà la fetch() al backend
+    }
+
+    // --- 2. WEBSOCKET FOR LIVE DATA ---
+    function connectWebSocket() {
+        console.log("Waiting for backend API to establish WebSocket connection...");
+        /*
+        const ws = new WebSocket("ws://localhost:8000/ws/live-data");
+        ws.onmessage = function(event) {
+            const data = JSON.parse(event.data);
+            
+            if (data.source === "air_quality_pm25" && data.payload) {
+                const elPm1 = document.getElementById("val-air_quality-pm1");
+                const elPm25 = document.getElementById("val-air_quality-pm25");
+                const elPm10 = document.getElementById("val-air_quality-pm10");
+                
+                if(elPm1) elPm1.innerText = data.payload.pm1;
+                if(elPm25) elPm25.innerText = data.payload.pm25;
+                if(elPm10) elPm10.innerText = data.payload.pm10;
+                
+                [elPm1, elPm25, elPm10].forEach(el => {
+                    if(el) { el.style.color = "#28a745"; setTimeout(() => el.style.color = "#0d6efd", 500); }
+                });
+                updateTimestamp();
+            } 
+            else if (data.payload) {
+                const element = document.getElementById("val-" + data.source);
+                if(element) {
+                    let valueToDisplay = data.payload.value || data.payload.level_pct || "N/A";
+                    if (data.payload.measurements) {
+                        valueToDisplay = Object.values(data.payload.measurements)[0];
+                    }
+                    element.innerText = valueToDisplay;
+                    element.style.color = "#28a745";
+                    setTimeout(() => element.style.color = "#0d6efd", 500);
+                    updateTimestamp();
+                }
+            }
+        };
+        */
+    }
+
+    // --- 3. RULE ENGINE CRUD & MODAL ---
+    function loadRules() {
+        console.log("Waiting for backend API to load rules from MySQL...");
+    }
+
+    function openAddRuleModal() {
+        document.getElementById("ruleModalLabel").innerText = "✨ Add New Rule";
+        document.getElementById("ruleForm").reset();
+        document.getElementById("ruleId").value = "";
+        ruleModal.show();
+    }
+
+    function editRule(id, fullCondition, actuator, action) {
+        document.getElementById("ruleModalLabel").innerText = `✏️ Edit Rule #${id}`;
+        
+        const parts = fullCondition.split(" ");
+        
+        document.getElementById("ruleId").value = id;
+        document.getElementById("ruleSensor").value = parts[0];
+        document.getElementById("ruleOperator").value = parts[1];
+        document.getElementById("ruleThreshold").value = parts[2];
+        document.getElementById("ruleActuator").value = actuator;
+        document.getElementById("ruleAction").value = action;
+        
+        ruleModal.show();
+    }
+
+    function saveRule() {
+        const id = document.getElementById("ruleId").value;
+        const sensor = document.getElementById("ruleSensor").value;
+        const operator = document.getElementById("ruleOperator").value;
+        const threshold = document.getElementById("ruleThreshold").value;
+        const actuator = document.getElementById("ruleActuator").value;
+        const action = document.getElementById("ruleAction").value;
+
+        if(!threshold) {
+            alert("Please enter a valid threshold value!");
+            return;
+        }
+
+        const conditionString = `${sensor} ${operator} ${threshold}`;
+        const payload = {
+            condition: conditionString,
+            actuator: actuator,
+            action_taken: action
+        };
+
+        if(id) {
+            console.log(`[API Request] Updating Rule ${id}:`, payload);
+        } else {
+            console.log(`[API Request] Creating New Rule:`, payload);
+        }
+
+        ruleModal.hide();
+    }
+
+    function deleteRule(ruleId) {
+        if(confirm(`Are you sure you want to delete Rule ID ${ruleId}?`)) {
+            console.log(`[API Request] Deleting rule ID: ${ruleId}`);
+        }
+    }
+</script>
+
+</body>
+</html>

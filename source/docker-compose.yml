@@ -12,6 +12,9 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    hostname: broker
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
 
   # 2.DATABASE (MySQL)
   db:
@@ -70,4 +73,5 @@ networks:
     driver: bridge
 
 volumes:
+  rabbitmq_data: #Appoggia i dati di rabbitmq
   db_data: # Salva i dati di MySQL in modo persistente

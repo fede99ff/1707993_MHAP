@@ -182,7 +182,7 @@
 
 </div>
 
-<div class="modal fade" id="ruleModal" tabindex="-1" aria-labelledby="ruleModalLabel" aria-hidden="true">
+<div class="modal fade" id="ruleModal" tabindex="-1" aria-labelledby="ruleModalLabel">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
@@ -255,245 +255,191 @@
         </div>
     </div>
 </div>
-
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
 <script>
     const API_BASE = "http://localhost:8000/api";
-    const POLLING_INTERVAL_MS = 3000; // Aggiorna i dati ogni 3 secondi
+    let sensorEventSource = null;
     let ruleModal;
 
-    // Inizializzazione sicura al caricamento della pagina
     document.addEventListener("DOMContentLoaded", function() {
-        // Inizializza il pop-up
-        ruleModal = new bootstrap.Modal(document.getElementById('ruleModal'));
+        const modalEl = document.getElementById('ruleModal');
+        if (modalEl) ruleModal = new bootstrap.Modal(modalEl);
         
-        // Aspetta 1 secondo (1000 millisecondi) prima di fare le prime chiamate
-        setTimeout(() => {
-            console.log("Richiesta iniziale dei dati al backend...");
-            loadRules();
-            startSensorSSE();  
-            startActuatorPolling();
-        }, 1000);
+        loadRules();
+        startUnifiedSSE();
     });
 
-    function updateTimestamp() {
-        const now = new Date();
-        document.getElementById("last-update-time").innerText = now.toLocaleTimeString(); 
-    }
+    function startUnifiedSSE() {
+        sensorEventSource = new EventSource(`${API_BASE}/sensors/stream`);
 
-    // --- SENSORI (POLLING REST) ---
+        sensorEventSource.addEventListener("habitat_update", (event) => {
+            try {
+                const data = JSON.parse(event.data);
+                console.log("STRUTTURA DATI RICEVUTA:", data.sensors);
+                // 1. Sensori
+                updateDashboard(data.sensors);
 
-    let sensorEventSource = null;
-
-    function startSensorSSE() {
-    // 1) Primo caricamento (utile anche se SSE tarda ad arrivare)
-    fetchSensorData();
-
-    // 2) Stream SSE
-    const streamUrl = `${API_BASE}/sensors/stream`;
-    sensorEventSource = new EventSource(streamUrl);
-
-    // Se il backend manda "event: sensors"
-    sensorEventSource.addEventListener("sensors", (event) => {
-        try {
-        const data = JSON.parse(event.data);
-        updateDashboard(data);
-        updateTimestamp();
-        } catch (e) {
-        console.error("❌ SSE payload non valido:", e, event.data);
-        }
-    });
-
-    // Fallback: se il backend manda solo "data: ..."
-    sensorEventSource.onmessage = (event) => {
-        try {
-        const data = JSON.parse(event.data);
-        updateDashboard(data);
-        updateTimestamp();
-        } catch (e) {
-        // ignora se già gestito da addEventListener("sensors", ...)
-        }
-    };
-
-    sensorEventSource.onerror = () => {
-        // EventSource fa reconnect automatico
-        console.warn("⚠️ SSE error/disconnect: retry automatico...");
-    };
-    }
-
-
-function extractReading(sensorState) {
-  // supporta sia vecchio formato (payload già piatto) sia nuovo (wrapper con payload)
-  const p = sensorState?.payload ?? sensorState ?? {};
-
-  // caso standard: { value, unit }
-  if (typeof p.value === "number") return { value: p.value, unit: p.unit };
-
-  // caso measurements: { measurements: [{metric,value,unit}, ...] }
-  if (Array.isArray(p.measurements) && typeof p.measurements[0]?.value === "number") {
-    return { value: p.measurements[0].value, unit: p.measurements[0].unit, metric: p.measurements[0].metric };
-  }
-
-  // casi speciali: serbatoio
-  if (typeof p.level_pct === "number") return { value: p.level_pct, unit: "%" };
-
-  // air quality: scegli pm25 come default
-  if (typeof p.pm25 === "number") return { value: p.pm25, unit: "µg/m³", metric: "pm25" };
-
-  return null; // non interpretabile
-}
-
-
-// --- ATTUATORI (POLLING REST) ---
-function startActuatorPolling() {
-  // Prima chiamata immediata
-  fetchActuatorData();
-
-  // Timer ciclico
-  setInterval(() => {
-    fetchActuatorData();
-  }, POLLING_INTERVAL_MS);
-}
-
-
-function fetchActuatorData() {
-        fetch(`${API_BASE}/actuators`)
-            .then(res => res.json())
-            .then(data => {
-                // Controlliamo se esiste la chiave "actuators" nel pacchetto ricevuto
-                if (data && data.actuators) {
-                    const attuatori = data.actuators;
-                    
-                    for (let id in attuatori) {
+                // 2. Attuatori
+                if (data.actuators) {
+                    for (let id in data.actuators) {
                         const switchEl = document.getElementById(`switch-${id}`);
-                        const state = attuatori[id]; 
-                        
-                        // Se l'interruttore esiste nell'HTML spostalo nello stato corretto
                         if (switchEl) {
-                            switchEl.checked = (state === "ON");
+                            switchEl.checked = (data.actuators[id] === "ON");
                         }
                     }
                 }
-            })
-            .catch(err => console.error("❌ Errore lettura attuatori:", err));
-    }
-    
-function fetchSensorData() {
-    fetch(`${API_BASE}/sensors/latest`)
-        .then(res => res.json())
-        .then(data => {
-            console.log("DEBUG SENSORI:", data); 
-            
-            updateDashboard(data);
-        })
-        .catch(err => console.error("ERRORE FETCH:", err));
-}
 
-const sensors = [
-  "greenhouse_temperature",
-  "entrance_humidity",
-  "co2_hall",
-  "hydroponic_ph",
-  "water_tank_level",
-  "corridor_pressure",
-  "air_quality_voc",
-  "air_quality_pm25" // attenzione: questo è il "sensore" che contiene pm1/pm25/pm10
-];
+                // 3. Trigger Regole
+                if (data.refresh_rules === true) {
+                    loadRules();
+                }
 
-function updateAirQualityPM(data) {
-  const state = data?.air_quality_pm25;
-  const p = state?.payload ?? state ?? {};
+                if(document.getElementById("last-update-time")) {
+                    document.getElementById("last-update-time").innerText = new Date().toLocaleTimeString();
+                }
 
-  const elPm1 = document.getElementById("val-air_quality-pm1");
-  const elPm25 = document.getElementById("val-air_quality-pm25");
-  const elPm10 = document.getElementById("val-air_quality-pm10");
-
-  if (elPm1)  elPm1.innerText  = (typeof p.pm1  === "number") ? p.pm1.toFixed(2)  : "--";
-  if (elPm25) elPm25.innerText = (typeof p.pm25 === "number") ? p.pm25.toFixed(2) : "--";
-  if (elPm10) elPm10.innerText = (typeof p.pm10 === "number") ? p.pm10.toFixed(2) : "--";
-}
-
-function updateDashboard(data) {
-  // 1) caso speciale: PM1/PM2.5/PM10
-  updateAirQualityPM(data);
-
-  // 2) sensori "normali" che hanno un singolo valore nel DOM: val-<id>
-  sensors.forEach((id) => {
-    // salta air_quality_pm25 perché già gestito sopra (altrimenti cerchi val-air_quality_pm25 che in HTML non c’è)
-    if (id === "air_quality_pm25") return;
-
-    const element = document.getElementById(`val-${id}`);
-    if (!element) return;
-
-    const sensorState = data?.[id];
-    if (!sensorState) {
-      element.innerText = "--";
-      return;
+            } catch (e) {
+                console.error("Errore SSE:", e);
+            }
+        });
     }
 
-    const r = extractReading(sensorState);
-    if (!r || typeof r.value !== "number") {
-      console.warn("⚠️ Lettura non interpretabile per", id, sensorState);
-      element.innerText = "--";
-      return;
+    function updateDashboard(sensorData) {
+        // Funzione helper per estrarre il valore sia da oggetti semplici che da array measurements
+        const extractValue = (sensorObj) => {
+            if (!sensorObj || !sensorObj.payload) return null;
+            const p = sensorObj.payload;
+
+            // Caso 1: La nuova struttura con array "measurements" (pH e VOC)
+            if (p.measurements && Array.isArray(p.measurements) && p.measurements.length > 0) {
+                return p.measurements[0].value;
+            }
+
+            // Caso 2: Struttura standard (Temperature, Humidity, etc.)
+            if (p.value !== undefined) return p.value;
+            if (p.level_pct !== undefined) return p.level_pct;
+
+            return null;
+        };
+
+        // 1. MAPPING SENSORI
+        const mapping = {
+            "greenhouse_temperature": "val-greenhouse_temperature",
+            "entrance_humidity": "val-entrance_humidity",
+            "co2_hall": "val-co2_hall",
+            "hydroponic_ph": "val-hydroponic_ph",
+            "water_tank_level": "val-water_tank_level",
+            "corridor_pressure": "val-corridor_pressure",
+            "air_quality_voc": "val-air_quality_voc"
+        };
+
+        Object.keys(mapping).forEach(sid => {
+            const el = document.getElementById(mapping[sid]);
+            if (el) {
+                const val = extractValue(sensorData[sid]);
+                if (val !== null && val !== undefined) {
+                    el.innerText = val.toFixed(2);
+                } else {
+                    el.innerText = "--";
+                }
+            }
+        });
+
+    // 2. GESTIONE SPECIALE QUALITÀ ARIA (PM)
+    const pm = sensorData['air_quality_pm25'];
+    if (pm && pm.payload) {
+        const p = pm.payload;
+        // Se anche i PM fossero in measurements, usiamo extractValue, 
+        // ma di solito sono chiavi dirette pm1, pm25, pm10
+        const fields = {
+            "val-air_quality-pm1": p.pm1,
+            "val-air_quality-pm25": p.pm25,
+            "val-air_quality-pm10": p.pm10
+        };
+
+        for (let id in fields) {
+            const el = document.getElementById(id);
+            if (el && fields[id] !== undefined) {
+                el.innerText = fields[id].toFixed(2);
+            }
+        }
     }
-
-    element.innerText = r.value.toFixed(2) + (r.unit ? ` ${r.unit}` : "");
-  });
 }
-
-    // --- ATTUATORI ---
-    function toggleActuator(actuatorId, isChecked) {
-        const state = isChecked ? "ON" : "OFF";
-        fetch(`${API_BASE}/actuators/${actuatorId}`, {
+    function toggleActuator(id, isChecked) {
+        fetch(`${API_BASE}/actuators/${id}`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ state: state })
-        }).catch(err => alert("Errore connessione attuatore"));
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({state: isChecked ? "ON" : "OFF"})
+        });
     }
 
-    // --- REGOLE (CRUD) ---
     function loadRules() {
         fetch(`${API_BASE}/rules`)
-            .then(res => {
-                if (!res.ok) throw new Error("Backend non ancora pronto");
-                return res.json();
-            })
+            .then(res => res.json())
             .then(rules => {
                 const tbody = document.getElementById("rules-table-body");
-                tbody.innerHTML = "";
-                rules.forEach(r => {
-                    tbody.innerHTML += `
-                        <tr>
-                            <td>${r.id}</td>
-                            <td><code>${r.condition}</code></td>
-                            <td><strong>${r.actuator}</strong></td>
-                            <td><span class="badge ${r.action_taken === 'ON' ? 'bg-success' : 'bg-danger'}">${r.action_taken}</span></td>
-                            <td>
-                                <button class="btn btn-sm btn-outline-primary" onclick="editRule(${r.id}, '${r.condition}', '${r.actuator}', '${r.action_taken}')">Edit</button>
-                                <button class="btn btn-sm btn-outline-danger" onclick="deleteRule(${r.id})">Delete</button>
-                            </td>
-                        </tr>
-                    `;
-                });
-            })
-            .catch(err => {
-                console.warn("Nessuna regola caricata al primo avvio, riprovo tra poco...", err);
-                // Se fallisce, riprova da solo dopo 2 secondi
-                setTimeout(loadRules, 2000); 
+                if(!tbody) return;
+                tbody.innerHTML = rules.map(r => `
+                    <tr>
+                        <td>${r.id}</td>
+                        <td><code>${r.condition}</code></td>
+                        <td>${r.actuator}</td>
+                        <td><span class="badge ${r.action_taken === 'ON' ? 'bg-success' : 'bg-danger'}">${r.action_taken}</span></td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-primary" onclick="editRule(${r.id}, '${r.condition}', '${r.actuator}', '${r.action_taken}')">Edit</button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteRule(${r.id})">Delete</button>
+                        </td>
+                    </tr>
+                `).join('');
             });
     }
 
+
+    function saveRule() {
+        const id = document.getElementById("ruleId").value;
+        const payload = {
+            condition: `${document.getElementById("ruleSensor").value} ${document.getElementById("ruleOperator").value} ${document.getElementById("ruleThreshold").value}`,
+            actuator: document.getElementById("ruleActuator").value,
+            action_taken: document.getElementById("ruleAction").value,
+            enabled: true
+        };
+        const method = id ? 'PUT' : 'POST';
+        const url = id ? `${API_BASE}/rules/${id}` : `${API_BASE}/rules`;
+
+        fetch(url, { 
+            method: method, 
+            headers: {'Content-Type': 'application/json'}, 
+            body: JSON.stringify(payload) 
+        })
+        .then(res => { 
+            if(res.ok) { 
+                ruleModal.hide();
+                // Riporta il focus per l'accessibilità
+                const addBtn = document.querySelector('button[onclick="openAddRuleModal()"]');
+                if(addBtn) addBtn.focus();
+                loadRules(); // Ricorda di ricaricare la tabella!
+            } 
+        }) // Graffa chiusa correttamente
+        .catch(err => console.error("Errore salvataggio:", err));
+    }
+
+    function deleteRule(id) {
+        if(confirm("Delete?")) {
+            fetch(`${API_BASE}/rules/${id}`, { method: 'DELETE' })
+            .then(res => { if(res.ok) loadRules(); });
+        }
+    }
+
     function openAddRuleModal() {
-        document.getElementById("ruleModalLabel").innerText = "✨ Add New Rule";
         document.getElementById("ruleForm").reset();
         document.getElementById("ruleId").value = "";
+        document.getElementById("ruleModalLabel").innerText = "🛠️ Add New Rule";
         ruleModal.show();
     }
 
     function editRule(id, fullCondition, actuator, action) {
-        document.getElementById("ruleModalLabel").innerText = `✏️ Edit Rule #${id}`;
+        document.getElementById("ruleModalLabel").innerText = "✏️ Edit Rule #" + id;
         const parts = fullCondition.split(" ");
         document.getElementById("ruleId").value = id;
         document.getElementById("ruleSensor").value = parts[0];
@@ -503,26 +449,29 @@ function updateDashboard(data) {
         document.getElementById("ruleAction").value = action;
         ruleModal.show();
     }
-
-    function saveRule() {
-        const id = document.getElementById("ruleId").value;
-        const payload = {
-            condition: `${document.getElementById("ruleSensor").value} ${document.getElementById("ruleOperator").value} ${document.getElementById("ruleThreshold").value}`,
-            actuator: document.getElementById("ruleActuator").value,
-            action_taken: document.getElementById("ruleAction").value
-        };
-
-        const method = id ? 'PUT' : 'POST';
-        const url = id ? `${API_BASE}/rules/${id}` : `${API_BASE}/rules`;
-
-        fetch(url, { method: method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
-        .then(res => { if(res.ok) { ruleModal.hide(); loadRules(); } });
-    }
-
-    function deleteRule(id) {
-        if(confirm(`Delete Rule ID ${id}?`)) {
-            fetch(`${API_BASE}/rules/${id}`, { method: 'DELETE' }).then(res => { if(res.ok) loadRules(); });
-        }
+    document.addEventListener("DOMContentLoaded", function() {
+        const modalEl = document.getElementById('ruleModal');
+        if (modalEl) ruleModal = new bootstrap.Modal(modalEl);
+        
+        loadRules();
+        
+        // 1. Carica i dati IMMEDIATAMENTE all'apertura
+        loadInitialData(); 
+        
+        // 2. Poi avvia lo stream per gli aggiornamenti futuri
+        startUnifiedSSE();
+    });
+    
+    function loadInitialData() {
+        fetch(`${API_BASE}/sensors/current`)
+            .then(res => res.json())
+            .then(data => {
+                console.log("Dati iniziali caricati:", data);
+                if (data.sensors) {
+                    updateDashboard(data.sensors);
+                }
+            })
+            .catch(err => console.error("Errore nel caricamento iniziale:", err));
     }
 </script>
 

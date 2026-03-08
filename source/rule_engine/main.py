@@ -4,6 +4,7 @@ import json
 import pika
 import pymysql
 import requests
+import re
 
 
 BROKER_URL = os.getenv("BROKER_URL", "amqp://guest:guest@broker:5672/")
@@ -56,14 +57,22 @@ def estrai_valore_da_payload(payload: dict):
     if not isinstance(payload, dict):
         return None
 
-    if "value" in payload and isinstance(payload["value"], (int, float)):
+    if isinstance(payload.get("value"), (int, float)):
         return payload["value"]
 
-    meas = payload.get("measurements")
-    if isinstance(meas, list) and len(meas) > 0 and isinstance(meas[0], dict):
-        v = meas[0].get("value")
-        return v if isinstance(v, (int, float)) else None
+    if isinstance(payload.get("level_pct"), (int, float)):
+        return payload["level_pct"]
 
+    for k in ("pm25", "pm10", "pm1"):
+        v = payload.get(k)
+        if isinstance(v, (int, float)):
+            return v
+
+    meas = payload.get("measurements")
+    if isinstance(meas, list):
+        for m in meas:
+            if isinstance(m, dict) and isinstance(m.get("value"), (int, float)):
+                return m["value"]
 
     return None
 
@@ -100,19 +109,26 @@ def callback(ch, method, properties, body):
 
 
         for regola in regole:
-            parti_regola = regola['condition'].split(' ')
-            
-            if len(parti_regola) == 3:
-                operatore = parti_regola[1]
-                soglia = parti_regola[2]
-                
-                print(f"  -> Controllo regola: Se {valore_attuale} {operatore} {soglia} allora {regola['actuator']}={regola['action_taken']}")
-                
-                if valuta_condizione(valore_attuale, operatore, soglia):
-                    print("    [!] CONDIZIONE AVVERATA!")
-                    trigger_actuator(regola['actuator'], regola['action_taken'])
-                else:
-                    print("    [OK] Condizione NON avverata.")
+            cond_str = (regola.get("condition") or "").strip()
+            m = re.match(
+                r'^\s*(\S+)\s*(>=|<=|==|=|>|<)\s*([+-]?\d+(?:\.\d+)?)\s*(.*)?$',
+                cond_str
+            )
+            if not m:
+                print(f"  -> [SKIP] Condizione non parsabile: {cond_str!r}")
+                continue
+
+            sensor_cond, operatore, soglia, unita = (
+                m.group(1),
+                m.group(2),
+                m.group(3),
+                (m.group(4) or "").strip()
+            )
+
+            if sensor_cond != sensor_id:
+                continue
+
+            print(f"  -> Regola matchata per {sensor_id}: {cond_str} (unità='{unita}')")
 
     except Exception as e:
         print(f"[ERRORE RULE ENGINE] {e}")

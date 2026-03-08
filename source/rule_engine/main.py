@@ -5,10 +5,9 @@ import pika
 import pymysql
 import requests
 
-# --- CONFIGURAZIONI ---
+
 BROKER_URL = os.getenv("BROKER_URL", "amqp://guest:guest@broker:5672/")
 SIMULATOR_URL = os.getenv("SIMULATOR_URL", "http://host.docker.internal:8080")
-
 DB_HOST = os.getenv("DB_HOST", "db")
 DB_USER = os.getenv("DB_USER", "mars_user")
 DB_PASSWORD = os.getenv("DB_PASSWORD", "mars_password")
@@ -41,7 +40,6 @@ def connect_with_retry(parameters, attempts=30, base_sleep=1.0, max_sleep=10.0):
     raise last_err
 
 def valuta_condizione(valore_sensore, operatore, soglia):
-    #Fa il confronto matematico tra il dato letto e la regola del DB.
     try:
         val = float(valore_sensore)
         soglia = float(soglia)
@@ -55,9 +53,6 @@ def valuta_condizione(valore_sensore, operatore, soglia):
     return False
 
 def estrai_valore_da_payload(payload: dict):
-    
-    #I sensori hanno formati diversi (es. 'value' per temp, 'pm25' per aria).
-    #Questa funzione cerca il numero giusto da controllare.
     if not isinstance(payload, dict):
         return None
 
@@ -73,7 +68,6 @@ def estrai_valore_da_payload(payload: dict):
     return None
 
 def trigger_actuator(actuator_id, target_state):
-    #Invia il comando HTTP POST al simulatore per accendere/spegnere l'attuatore.
     url = f"{SIMULATOR_URL}/api/actuators/{actuator_id}"
     payload = {"state": target_state}
     try:
@@ -86,7 +80,6 @@ def trigger_actuator(actuator_id, target_state):
         print(f"    [ERRORE RETE] -> Impossibile contattare il simulatore: {e}")
 
 def callback(ch, method, properties, body):
-    #Questa funzione scatta OGNI VOLTA che arriva un dato da RabbitMQ.
     evento = json.loads(body)
     sensor_id = evento.get("source")
     payload = evento.get("payload", {})
@@ -94,7 +87,7 @@ def callback(ch, method, properties, body):
     valore_attuale = estrai_valore_da_payload(payload)
     if valore_attuale is None:
         print(f"[rule_engine] payload non supportato per regole: {payload}")
-        return # Ignora se non riusciamo a estrarre un numero valido
+        return
 
     print(f"\n[DATO RICEVUTO] {sensor_id}: {valore_attuale}")
 
@@ -105,9 +98,8 @@ def callback(ch, method, properties, body):
             cursor.execute(sql, (f"{sensor_id} %",))
             regole = cursor.fetchall()
 
-        # Valutiamo tutte le regole trovate per questo sensore
+
         for regola in regole:
-            # Spezzettiamo la stringa: "greenhouse_temperature > 28.0" -> ['greenhouse_temperature', '>', '28.0']
             parti_regola = regola['condition'].split(' ')
             
             if len(parti_regola) == 3:
@@ -116,7 +108,6 @@ def callback(ch, method, properties, body):
                 
                 print(f"  -> Controllo regola: Se {valore_attuale} {operatore} {soglia} allora {regola['actuator']}={regola['action_taken']}")
                 
-                # Facciamo la vera e propria valutazione matematica
                 if valuta_condizione(valore_attuale, operatore, soglia):
                     print("    [!] CONDIZIONE AVVERATA!")
                     trigger_actuator(regola['actuator'], regola['action_taken'])
@@ -137,7 +128,6 @@ def main():
     connection = connect_with_retry(parameters)
     channel = connection.channel()
 
-    # Dichiariamo l'exchange e la coda
     channel.exchange_declare(exchange='normalized_events', exchange_type='fanout')
     channel.queue_declare(queue='rule_engine_queue', durable=True)
     channel.queue_bind(exchange='normalized_events', queue='rule_engine_queue')

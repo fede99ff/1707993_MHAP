@@ -15,9 +15,9 @@ These rules allow the system to autonomously trigger actuators, ensuring all env
 7) As a user, i want to be able to know the state of the actuators (ON/OFF)
 8) As a user, i want my automation rules to be persistent even if the system is restarted
 9) As a user, i want the system to be able to recognize changes in the values registered by the sensors and enforce the corresponding automation rule
-10) As a user, i want the reading of the sensor in the dashboard to be automatically update periodically
-11) As a user, i want to be able to read all the reading of the data from the REST sensors
-12) As a user i want the manual activation of a given actuator to last for 30 seconds even if there is a rule that would change the state of it
+10) As a user, I want the reading of the sensor in the dashboard to be automatically update periodically
+11) As a user, I want to be able to read all the reading of the data from the REST sensors
+12) As a user I want the manual activation of a given actuator to last for 30 seconds even if there is a rule that would change the state of it
 
 ## 1. Assumptions
 
@@ -39,21 +39,17 @@ To decouple ingestion, rule evaluation, state caching, and presentation, all inc
 This schema is used on RabbitMQ exchanges/queues and inside backend services.
 
 
-### 2.2Standard sensor event schema
+### 2.2 Standard sensor event schema
 
 ```json
 {
-  "event_id": "uuid",
-  "event_type": "sensor.reading",
-  "timestamp": "2026-03-09T18:20:31Z",
-  "source_type": "rest",
-  "source_name": "greenhouse_temperature",
-  "schema_family": "rest.scalar.v1",
-  "value": 27.4,
-  "unit": "C",
-  "status": "OK",
-  "raw_payload": {
-    "temperature": 27.4,
+  "source": "greenhouse_temperature",
+  "type": "REST_SENSOR_READING",
+  "status": "ok",
+  "processed_at": "2026-03-09T18:20:31+00:00",
+  "payload": {
+    "metric": "temperature",
+    "value": 27.4,
     "unit": "C"
   }
 }
@@ -61,21 +57,16 @@ This schema is used on RabbitMQ exchanges/queues and inside backend services.
 
 ### 2.3 Field description
 
-| Field | Type |  | Description |
-|---|---|---:|---|
-| `event_id` | string |  | unique identifier of the event |
-| `event_type` | string |  | logical type of the event, e.g. `sensor.reading` |
-| `timestamp` | string |  | ISO 8601 timestamp of normalization/publication |
-| `source_type` | string |  | source category, e.g. `rest` |
-| `source_name` | string |  | simulator sensor identifier |
-| `schema_family` | string |  | schema family associated with the source |
-| `value` | number/string/object |  | normalized reading value |
-| `unit` | string/null |  | measurement unit if applicable |
-| `status` | string |  | acquisition status, e.g. `OK`, `ERROR` |
-| `raw_payload` | object |  | original source payload for traceability/debugging |
+| Field          | Type   | Description                                            |
+| -------------- | ------ | ------------------------------------------------------ |
+| `source`       | string | identifier of the sensor, taken from `sensor_id`       |
+| `type`         | string | normalized event type, currently `REST_SENSOR_READING` |
+| `status`       | string | acquisition status, default `ok` if not provided       |
+| `processed_at` | string | UTC timestamp generated during normalization  |
+| `payload`      | object | normalized sensor-specific content                     |
 
 ### 2.4 Notes on normalization
-For simple scalar sensors, `value` contains a single numeric value.
+For simple scalar sensors, `payload.value` contains a single numeric value.
 
 Examples:
 - scalar temperature sensor → `value: 27.4`
@@ -87,58 +78,64 @@ Examples:
 #### Example — scalar REST sensor
 Source sensor:
 - `greenhouse_temperature`
-- schema family: `rest.scalar.v1`
 
 Normalized event:
 ```json
 {
-  "event_id": "5a0b9b34-8d17-4a27-a1af-72dbd7a0c001",
-  "event_type": "sensor.reading",
-  "timestamp": "2026-03-09T18:20:31Z",
-  "source_type": "rest",
-  "source_name": "greenhouse_temperature",
-  "schema_family": "rest.scalar.v1",
-  "value": 27.4,
-  "unit": "C",
-  "status": "OK",
-  "raw_payload": {
-    "temperature": 27.4,
+  "source": "greenhouse_temperature",
+  "type": "REST_SENSOR_READING",
+  "status": "ok",
+  "processed_at": "2026-03-09T18:20:31+00:00",
+  "payload": {
+    "metric": "temperature",
+    "value": 27.4,
     "unit": "C"
   }
 }
 ```
 ---
 
-## 3. Internal actuator command schema
+## 3. Actuator command handling
 
 ### 3.1 Purpose
-Rule evaluation is decoupled from actuator invocation through a dedicated internal command event.
+Actuator control is decoupled from sensor ingestion and rule persistence.
+Actuator actions are executed directly through REST calls to the simulator.
 
-### 3.2 Standard actuator command event
+### 3.2 Command source
+Actuator commands can originate from two sources:
+- the rule engine, when an enabled rule matches an incoming normalized sensor event
+- the backend, when a user manually controls an actuator from the dashboard
+
+### 3.3 Command execution
+Both automatic and manual control invoke the simulator actuator API through an HTTP request to:
+
+```text
+/api/actuators/{actuator_id}
+```
+
+with payload:
 
 ```json
 {
-  "command_id": "uuid",
-  "event_type": "actuator.command",
-  "timestamp": "2026-03-09T18:21:02Z",
-  "actuator_name": "cooling_fan",
-  "target_state": "ON",
-  "trigger_rule_id": "rule-001",
-  "triggering_event_id": "5a0b9b34-8d17-4a27-a1af-72dbd7a0c001"
+  "state": "ON"
 }
 ```
 
-### 3.3 Field description
+or
 
-| Field | Type |  | Description |
-|---|---|---:|---|
-| `command_id` | string |  | unique identifier of the command |
-| `event_type` | string |  | must be `actuator.command` |
-| `timestamp` | string |  | command creation timestamp |
-| `actuator_name` | string |  | target actuator identifier |
-| `target_state` | string |  | target actuator state: `ON` or `OFF` |
-| `trigger_rule_id` | string |  | identifier of the rule that generated the command |
-| `triggering_event_id` | string |  | sensor event that caused the rule to fire |
+```json
+{
+  "state": "OFF"
+}
+```
+
+### 3.4 Internal command model in the current implementation
+The current implementation does not define a dedicated persistent or message-based actuator command schema.
+The command is represented implicitly by:
+- the target actuator identifier
+- the desired state (`ON` or `OFF`)
+- the REST request sent to the simulator
+
 
 ---
 
@@ -160,35 +157,47 @@ or
 }
 ```
 
-This payload is generated by `actuator-service` from the internal `actuator.command` event.
+In the current implementation, this payload is generated directly by the backend or the rule engine when invoking the simulator actuator endpoint.
 
 ---
 
-## 5. Actuator state update event
+## 5. Actuator control and state handling
 
 ### 5.1 Purpose
-After invoking the simulator actuator API, the actuator service emits an event to notify the rest of the platform.
+The platform controls actuators through REST calls to the simulator and retrieves their current state for dashboard visualization.
 
-### 5.2 Standard actuator state event
+### 5.2 Actuator invocation
+When a rule is triggered, or when a user manually controls an actuator from the dashboard, the platform invokes the simulator actuator API through an HTTP request.
+
+The simulator actuator API is called with the following payload:
 
 ```json
 {
-  "event_id": "uuid",
-  "event_type": "actuator.state.changed",
-  "timestamp": "2026-03-09T18:21:03Z",
-  "actuator_name": "cooling_fan",
-  "state": "ON",
-  "result": "SUCCESS",
-  "command_id": "uuid"
+  "state": "ON"
 }
 ```
+
+or
+
+```json
+{
+  "state": "OFF"
+}
+```
+
+### 5.3 Result handling
+Actuator execution is currently handled synchronously through the HTTP response returned by the simulator.
+
+### 5.4 Actuator state retrieval
+The current actuator state is retrieved by the backend from the simulator actuator endpoints and included in the data exposed to the dashboard.
+
 
 ---
 
 ## 6. Rule model
 
 ### 6.1 Purpose
-Automation rules define reactive behavior triggered by incoming sensor events.
+Automation rules dfine reactive behavior triggered by incoming sensor events.
 
 ### 6.2 Rule syntax
 Rules follow the assignment model:
@@ -199,7 +208,8 @@ Rules follow the assignment model:
 Supported operators:
 - `<`
 - `<=`
-- `=` or `==``
+- `=`
+- `==`
 - `>`
 - `>=`
 
@@ -207,35 +217,18 @@ Supported operators:
 
 ```json
 {
-  "rule_id": "rule-001",
-  "name": "Turn on cooling fan when greenhouse temperature is high",
-  "enabled": true,
-  "sensor_name": "greenhouse_temperature",
-  "operator": ">",
-  "threshold_value": 28,
-  "unit": "C",
-  "actuator_name": "cooling_fan",
-  "target_state": "ON"
+  "id": 1,
+  "condition": "greenhouse_temperature > 28 C",
+  "action_taken": "ON",
+  "actuator": "cooling_fan",
+  "enabled": true
 }
 ```
-
 ### 6.4 Rule fields
-
-| Field | Type |  | Description |
-|---|---|---:|---|
-| `rule_id` | string |  | unique rule identifier |
-| `name` | string |  | human-readable rule name |
-| `enabled` | boolean |  | whether the rule is active |
-| `sensor_name` | string |  | sensor identifier |
-| `operator` | string |  | comparison operator |
-| `threshold_value` | number |  | threshold value used in evaluation |
-| `unit` | string/null |  | expected unit |
-| `actuator_name` | string | | actuator to control |
-| `target_state` | string |  | `ON` or `OFF` |
-
-### 6.5 Example
-
-**IF** greenhouse_temperature > 28 C  
-**THEN** set cooling_fan to ON
-
-
+| Field          | Type    | Description                                                                      |
+| -------------- | ------- | -------------------------------------------------------------------------------- |
+| `id`           | integer | unique rule identifier                                                           |
+| `condition`    | string  | rule condition stored as a parsable string, e.g. `greenhouse_temperature > 28 C` |
+| `action_taken` | string  | target actuator state, `ON` or `OFF`                                             |
+| `actuator`     | string  | actuator identifier                                                              |
+| `enabled`      | boolean | whether the rule is active                                                       |

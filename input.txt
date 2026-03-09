@@ -18,3 +18,4 @@ These rules allow the system to autonomously trigger actuators, ensuring all env
 9) As a user, i want the system to be able to recognize changes in the values registered by the sensors and enforce the corresponding automation rule
 10) As a user, i want the reading of the sensor in the dashboard to be automatically update periodically
 11) As a user, i want to be able to read all the reading of the data from the REST sensors
+12) As a user i want the manual activation of a given actuator to last for 30 seconds even if there is a rule that would change the state of it

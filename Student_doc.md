@@ -20,7 +20,7 @@ These rules allow the system to autonomously trigger actuators, ensuring all env
 9) As a user, i want the system to be able to recognize changes in the values registered by the sensors and enforce the corresponding automation rule
 10) As a user, i want the reading of the sensor in the dashboard to be automatically update periodically
 11) As a user, i want to be able to read all the reading of the data from the REST sensors
-
+12) As a user i want the manual activation of a given actuator to last for 30 seconds even if there is a rule that would change the state of it
 
 # CONTAINERS:
 
@@ -92,6 +92,8 @@ It guarantees that rules remain available even if other parts of the system are 
 
 9) As a user, i want the system to be able to recognize changes in the values registered by the sensors and enforce the corresponding automation rule
 
+12) As a user i want the manual activation of a given actuator to last for 30 seconds even if there is a rule that would change the state of it
+
 ### PORTS: 
 3306:3306
 
@@ -127,6 +129,8 @@ It reads candidate rules from MySQL, parses the textual condition, extracts a co
 ### USER STORIES:
 
 9) As a user, i want the system to be able to recognize changes in the values registered by the sensors and enforce the corresponding automation rule
+
+12) As a user i want the manual activation of a given actuator to last for 30 seconds even if there is a rule that would change the state of it
 
 ### PORTS: 
 No ports are published externally by this container
@@ -187,6 +191,8 @@ It provides CRUD operations for automation rules, a Server-Sent Events stream fo
 10) As a user, i want the reading of the sensor in the dashboard to be automatically update periodically
 
 11) As a user, i want to be able to read all the reading of the data from the REST sensors
+
+12) As a user i want the manual activation of a given actuator to last for 30 seconds even if there is a rule that would change the state of it
 
 ### PORTS:
 8000:8000
@@ -251,6 +257,8 @@ It provides visualization of sensor values, actuator states, the last update tim
 10) As a user, i want the reading of the sensor in the dashboard to be automatically update periodically
 
 11) As a user, i want to be able to read all the reading of the data from the REST sensors
+
+12) As a user i want the manual activation of a given actuator to last for 30 seconds even if there is a rule that would change the state of it
 
 ### PORTS:
 3000:80

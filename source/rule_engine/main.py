@@ -129,7 +129,7 @@ def callback(ch, method, properties, body):
                 continue
 
             print(f"  -> Regola matchata per {sensor_id}: {cond_str} (unità='{unita}')")
-            if valuta_condizione(valore_attuale, operatore, soglia):
+            if valuta_condizione(valore_attuale, operatore, soglia) and regola.get("enabled"):
                 print(f"    [CONDIZIONE VERA] {valore_attuale} {operatore} {soglia}")
                 trigger_actuator(regola["actuator"], regola["action_taken"])
             else:

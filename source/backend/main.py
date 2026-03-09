@@ -11,6 +11,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
+from fastapi import BackgroundTasks
 
 # --- CONFIGURAZIONE ---
 DB_HOST = os.getenv("DB_HOST", "db")
@@ -153,7 +154,8 @@ def delete_rule(rule_id: int):
     return None
 
 @app.post("/api/actuators/{actuator_id}")
-def command_actuator(actuator_id: str, command: ActuatorCommand):
+def command_actuator(actuator_id: str, command: ActuatorCommand, background_tasks: BackgroundTasks):
+    global rules_updated_trigger
     try:
         res = requests.post(
             f"{SIMULATOR_URL}/api/actuators/{actuator_id}",
@@ -163,6 +165,29 @@ def command_actuator(actuator_id: str, command: ActuatorCommand):
         if res.status_code != 200:
             raise HTTPException(status_code=502, detail=f"Simulator returned {res.status_code}")
 
-        return {"status": "success", "actuator": actuator_id, "state": command.state}
+        # 2. Disabilita le regole nel DB per questo attuatore
+        with get_conn() as conn:
+            with conn.cursor() as cur:
+                cur.execute("UPDATE rules SET enabled = FALSE WHERE actuator = %s", (actuator_id,))
+                rules_updated_trigger = True 
+
+        # 3. Pianifica il ripristino automatico tra 30 secondi
+        background_tasks.add_task(restore_rules_after_delay, actuator_id, 30)
+
+        return {"status": "success", "override": "active", "duration": 30}
+        
     except requests.exceptions.RequestException as e:
         raise HTTPException(status_code=502, detail=str(e))
+
+async def restore_rules_after_delay(actuator_id: str, delay: int):
+    global rules_updated_trigger
+    await asyncio.sleep(delay)
+    try:
+        with get_conn() as conn:
+            with conn.cursor() as cur:
+                # Riabilitiamo le regole per quell'attuatore
+                cur.execute("UPDATE rules SET enabled = TRUE WHERE actuator = %s", (actuator_id,))
+                rules_updated_trigger = True # Notifica il frontend via SSE per rinfrescare la tabella
+                print(f"INFO: Regole riattivate per {actuator_id}")
+    except Exception as e:
+        print(f"ERROR: Errore nel ripristino regole: {e}")

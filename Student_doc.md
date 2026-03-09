@@ -69,8 +69,8 @@ Communication with downstream services is asynchronous and decoupled through the
 
 	| HTTP METHOD | URL | Description | User Stories |
 	| ----------- | --- | ----------- | ------------ |
-	| GET | /api/sensors | Retrieve the list of simulator sensors (called on the external simulator) | 1, 10, 11 |
-	| GET | /api/sensors/{sensor_id} | Retrieve one simulator sensor reading (called on the external simulator) | 1, 10, 11 |
+	| GET | /api/sensors | Retrieve the list of simulator sensors (called on the external simulator) | 1, 9, 10, 11 |
+	| GET | /api/sensors/{sensor_id} | Retrieve one simulator sensor reading (called on the external simulator) | 1, 9, 10, 11 |
 
 
 ## CONTAINER_NAME: db
@@ -165,7 +165,7 @@ When a rule condition is satisfied, the worker calls the simulator actuator endp
 
 	| HTTP METHOD | URL | Description | User Stories |
 	| ----------- | --- | ----------- | ------------ |
-	| POST | /api/actuators/{actuator_id} | Target simulator endpoint that can be called by the worker to set actuator state (external simulator API) | 9 |
+	| POST | /api/actuators/{actuator_id} | Target simulator endpoint that can be called by the worker to set actuator state (external simulator API) | 9, 12 |
 
 ## CONTAINER_NAME: backend
 
@@ -226,9 +226,9 @@ The HTTP layer exposes CRUD operations and streams consolidated habitat state to
 	| ----------- | --- | ----------- | ------------ |
 	| GET | /api/sensors/stream | SSE stream that pushes the current sensor cache, current actuator states, and a refresh flag for rules | 1, 7, 10, 11 |
 	| GET | /api/sensors/current | Return the current in-memory sensor cache | 1, 11 |
-	| GET | /api/rules | Read all automation rules from MySQL | 5 |
+	| GET | /api/rules | Read all automation rules from MySQL | 5, 12 |
 	| POST | /api/rules | Create a new automation rule | 2 |
-	| PUT | /api/rules/{rule_id} | Update an existing automation rule | 4 |
+	| PUT | /api/rules/{rule_id} | Update an existing automation rule | 4, 12 |
 	| DELETE | /api/rules/{rule_id} | Delete an automation rule | 3 |
 	| POST | /api/actuators/{actuator_id} | Manually set actuator state by forwarding the command to the simulator | 6, 7 |
 
@@ -287,7 +287,7 @@ The page subscribes to the backend SSE stream, updates dashboard widgets in real
 
 	| Name | Description | Related Microservice | User Stories |
 	| ---- | ----------- | -------------------- | ------------ |
-	| Dashboard | Shows sensor values, last update timestamp, actuator states and switches, and the rules table | web dashboard | 1, 5, 6, 7, 10, 11 |
+	| Dashboard | Shows sensor values, last update timestamp, actuator states and switches, and the rules table | web dashboard | 1, 5, 6, 7, 10, 11, 12 |
 	| Rule modal | Bootstrap modal used to add and edit automation rules | web dashboard | 2, 4 |
 	| Delete interaction | Confirmation-based deletion from the rules table | web dashboard | 3 |
 
@@ -349,6 +349,8 @@ It exposes REST endpoints for sensors and actuators and acts as the source of ra
 
 11) As a user, i want to be able to read all the reading of the data from the REST sensors
 
+12) As a user i want the manual activation of a given actuator to last for 30 seconds even if there is a rule that would change the state of it
+
 ### PORTS:
 8080:8080
 
@@ -377,4 +379,4 @@ Prebuilt service integrated through REST by ingestion_service, backend, and rule
 	| GET | /api/sensors | Return available sensors | 1, 10, 11 |
 	| GET | /api/sensors/{sensor_id} | Return one sensor reading | 1, 10, 11 |
 	| GET | /api/actuators | Return current actuator states | 7 |
-	| POST | /api/actuators/{actuator_id} | Set actuator state | 6, 9 |
+	| POST | /api/actuators/{actuator_id} | Set actuator state | 6, 9, 12 |

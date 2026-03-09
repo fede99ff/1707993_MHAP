@@ -7,7 +7,7 @@ These rules allow the system to autonomously trigger actuators, ensuring all env
 
 # USER STORIES:
 
-1) As a user, i want to be able to see the last update of the reading of the REST sensor in a dashboard
+1) As a user, i want to be able to see when it was the last update of the reading of the REST sensor in a dashboard
 2) As a user, i want to be able to add an automation rule using an interface
 3) As a user, i want to be able to delete an automation rule from the interface
 4) As a user, i want to be able to modify an existing automation rule

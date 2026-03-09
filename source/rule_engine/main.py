@@ -129,6 +129,11 @@ def callback(ch, method, properties, body):
                 continue
 
             print(f"  -> Regola matchata per {sensor_id}: {cond_str} (unità='{unita}')")
+            if valuta_condizione(valore_attuale, operatore, soglia):
+                print(f"    [CONDIZIONE VERA] {valore_attuale} {operatore} {soglia}")
+                trigger_actuator(regola["actuator"], regola["action_taken"])
+            else:
+                print(f"    [CONDIZIONE FALSA] {valore_attuale} {operatore} {soglia}")
 
     except Exception as e:
         print(f"[ERRORE RULE ENGINE] {e}")

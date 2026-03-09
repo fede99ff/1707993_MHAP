@@ -267,8 +267,22 @@
         if (modalEl) ruleModal = new bootstrap.Modal(modalEl);
         
         loadRules();
+        loadInitialSensors();
         startUnifiedSSE();
     });
+
+
+    function loadInitialSensors() {
+        fetch(`${API_BASE}/sensors/current`)
+            .then(res => res.json())
+            .then(data => {
+                if (data && data.sensors) {
+                    updateDashboard(data.sensors);
+                }
+            })
+            .catch(err => console.error("Errore caricamento sensori iniziali:", err));
+    }
+
 
     function startUnifiedSSE() {
         sensorEventSource = new EventSource(`${API_BASE}/sensors/stream`);

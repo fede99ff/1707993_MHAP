@@ -107,6 +107,12 @@ async def sensors_stream():
             
     return StreamingResponse(event_generator(), media_type="text/event-stream")
 
+@app.get("/api/sensors/current")
+def get_current_sensors():
+    return {
+        "sensors": sensor_cache
+    }
+
 @app.get("/api/rules", response_model=List[RuleOut])
 def list_rules():
     with get_conn() as conn:
@@ -149,7 +155,14 @@ def delete_rule(rule_id: int):
 @app.post("/api/actuators/{actuator_id}")
 def command_actuator(actuator_id: str, command: ActuatorCommand):
     try:
-        requests.post(f"{SIMULATOR_URL}/api/actuators/{actuator_id}", json={"state": command.state}, timeout=5)
-        return {"status": "success"}
-    except:
-        raise HTTPException(status_code=502)
+        res = requests.post(
+            f"{SIMULATOR_URL}/api/actuators/{actuator_id}",
+            json={"state": command.state},
+            timeout=5
+        )
+        if res.status_code != 200:
+            raise HTTPException(status_code=502, detail=f"Simulator returned {res.status_code}")
+
+        return {"status": "success", "actuator": actuator_id, "state": command.state}
+    except requests.exceptions.RequestException as e:
+        raise HTTPException(status_code=502, detail=str(e))

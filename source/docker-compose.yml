@@ -1,5 +1,5 @@
 services:
-  simulator: 
+  simulator: #0. Simulatore
     image: mars-iot-simulator:multiarch_v1
     ports:
       - "8080:8080"

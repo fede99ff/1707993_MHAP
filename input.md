@@ -4,9 +4,9 @@
 Mars Habitat Automation Platform is a distributed automation platform designed to monitor and manage the IoT ecosystem of a Mars base. The system integrates REST-based sensors to track environmental metrics and actuators to control habitat equipment. The platform extract data from the sensors and provides a real-time dashboard for data visualization while empowering users to define, modify, and delete automation rules. These rules allow the system to autonomously trigger actuators, ensuring all environmental parameters remain within safety ranges.
 ## 0. User Stories
 1) As a user, i want to be able to see when it was the last update of the reading of the REST sensor in a dashboard
-2) As a user, i want to be able to add an automation rule using an interface
-3) As a user, i want to be able to delete an automation rule from the interface
-4) As a user, i want to be able to modify an existing automation rule
+2) As a user, i want to be able to add an automation rule from the dashboard
+3) As a user, i want to be able to delete an automation rule from the dashboard
+4) As a user, i want to be able to modify an existing automation rule from the dashboard
 5) As a user, i want to be able to read all the automation rule on the dashboard
 6) As a user, i want to be able to manually control (turn on or off) an activator from the dashboard
 7) As a user, i want to be able to know the state of the actuators (ON/OFF)

@@ -92,51 +92,9 @@ Normalized event:
 ```
 ---
 
-## 3. Actuator command handling
-
-### 3.1 Purpose
-Actuator control is decoupled from sensor ingestion and rule persistence.
-Actuator actions are executed directly through REST calls to the simulator.
-
-### 3.2 Command source
-Actuator commands can originate from two sources:
-- the rule engine, when an enabled rule matches an incoming normalized sensor event
-- the backend, when a user manually controls an actuator from the dashboard
-
-### 3.3 Command execution
-Both automatic and manual control invoke the simulator actuator API through an HTTP request to:
-
-```text
-/api/actuators/{actuator_id}
-```
-
-with payload:
-
-```json
-{
-  "state": "ON"
-}
-```
-
-or
-
-```json
-{
-  "state": "OFF"
-}
-```
-
-### 3.4 Internal command model in the current implementation
-The current implementation does not define a dedicated persistent or message-based actuator command schema.
-The command is represented implicitly by:
-- the target actuator identifier
-- the desired state (`ON` or `OFF`)
-- the REST request sent to the simulator
-
-
 ---
 
-## 4. External actuator REST payload
+## 3. External actuator REST payload
 
 The simulator actuator API is invoked with the following payload:
 
@@ -158,12 +116,12 @@ In the current implementation, this payload is generated directly by the backend
 
 ---
 
-## 5. Actuator control and state handling
+## 4. Actuator control and state handling
 
-### 5.1 Purpose
+### 4.1 Purpose
 The platform controls actuators through REST calls to the simulator and retrieves their current state for dashboard visualization.
 
-### 5.2 Actuator invocation
+### 4.2 Actuator invocation
 When a rule is triggered, or when a user manually controls an actuator from the dashboard, the platform invokes the simulator actuator API through an HTTP request.
 
 The simulator actuator API is called with the following payload:
@@ -182,21 +140,21 @@ or
 }
 ```
 
-### 5.3 Result handling
+### 4.3 Result handling
 Actuator execution is currently handled synchronously through the HTTP response returned by the simulator.
 
-### 5.4 Actuator state retrieval
+### 4.4 Actuator state retrieval
 The current actuator state is retrieved by the backend from the simulator actuator endpoints and included in the data exposed to the dashboard.
 
 
 ---
 
-## 6. Rule model
+## 5. Rule model
 
-### 6.1 Purpose
+### 5.1 Purpose
 Automation rules dfine reactive behavior triggered by incoming sensor events.
 
-### 6.2 Rule syntax
+### 5.2 Rule syntax
 Rules follow the assignment model:
 
 **IF** `<sensor_name>` `<operator>` `<value>` `[unit]`  
@@ -210,7 +168,7 @@ Supported operators:
 - `>`
 - `>=`
 
-### 6.3 Internal persistent rule model
+### 5.3 Internal persistent rule model
 
 ```json
 {
@@ -221,7 +179,7 @@ Supported operators:
   "enabled": true
 }
 ```
-### 6.4 Rule fields
+### 5.4 Rule fields
 | Field          | Type    | Description                                                                      |
 | -------------- | ------- | -------------------------------------------------------------------------------- |
 | `id`           | integer | unique rule identifier                                                           |

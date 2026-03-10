@@ -33,11 +33,11 @@ It is the entry point of the asynchronous data pipeline and periodically polls t
 ### USER STORIES:
 1) As a user, i want to be able to see when it was the last update of the reading of the REST sensor in a dashboard
 
- 9) As a user, i want the system to be able to recognize changes in the values registered by the sensors and enforce the corresponding automation rule
+9 ) As a user, i want the system to be able to recognize changes in the values registered by the sensors and enforce the corresponding automation rule
 
-- 10) As a user, i want the reading of the sensor in the dashboard to be automatically update periodically
+10) As a user, i want the reading of the sensor in the dashboard to be automatically update periodically
 
-- 11) As a user, i want to be able to read all the reading of the data from the REST sensors
+11) As a user, i want to be able to read all the reading of the data from the REST sensors
 
 ### PORTS: 
 No ports are published externally by this container

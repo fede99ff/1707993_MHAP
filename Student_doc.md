@@ -2,7 +2,7 @@
 
 **Project name:** Mars Habitat Automation Platform
 
-This project is a distributed automation platform designed to monitor and manage the IoT ecosystem of a Mars habitat. 
+This project is a distributed automation platform designed to monitor and manage the IoT ecosystem of a Mars base. 
 The system integrates REST-based sensors to track environmental metrics and actuators to control habitat equipment.
 The platform provides a real-time dashboard for data visualization and empowers users to define, modify, and delete automation rules.
 These rules allow the system to autonomously trigger actuators, ensuring all environmental parameters remain within safety ranges.

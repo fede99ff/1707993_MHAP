@@ -6,7 +6,6 @@ import pymysql
 import requests
 import re
 
-
 BROKER_URL = os.getenv("BROKER_URL", "amqp://guest:guest@broker:5672/")
 SIMULATOR_URL = os.getenv("SIMULATOR_URL", "http://host.docker.internal:8080")
 DB_HOST = os.getenv("DB_HOST", "db")
@@ -15,7 +14,6 @@ DB_PASSWORD = os.getenv("DB_PASSWORD", "mars_password")
 DB_NAME = os.getenv("DB_NAME", "rules_db")
 
 def get_db_connection():
-    """Crea una nuova connessione al database MySQL."""
     return pymysql.connect(
         host=DB_HOST,
         user=DB_USER,
@@ -23,9 +21,6 @@ def get_db_connection():
         database=DB_NAME,
         cursorclass=pymysql.cursors.DictCursor
     )
-
-import time
-import pika
 
 def connect_with_retry(parameters, attempts=30, base_sleep=1.0, max_sleep=10.0):
     sleep_s = base_sleep

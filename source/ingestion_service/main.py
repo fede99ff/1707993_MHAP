@@ -1,7 +1,6 @@
 import os
 import time
 import json
-import uuid
 import requests
 import pika
 from datetime import datetime, timezone
@@ -12,7 +11,6 @@ BROKER_URL = os.getenv("BROKER_URL", "amqp://guest:guest@localhost:5672/")
 POLL_INTERVAL = int(os.getenv("POLL_INTERVAL", "10"))
 
 def get_rabbitmq_channel():
-    """Connessione resiliente a RabbitMQ."""
     parameters = pika.URLParameters(BROKER_URL)
     connection = pika.BlockingConnection(parameters)
     channel = connection.channel()

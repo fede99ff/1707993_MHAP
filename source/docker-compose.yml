@@ -1,12 +1,11 @@
 services:
-  simulator: #0. Simulatore
+  simulator:
     image: mars-iot-simulator:multiarch_v1
     ports:
       - "8080:8080"
     networks:
       - mars_net
 
-  # 1.BROKER (RabbitMQ)
   broker:
     image: rabbitmq:3-management-alpine
     user: "999:999"
@@ -24,7 +23,6 @@ services:
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
 
-  # 2.DATABASE (MySQL)
   db:
     image: mysql:8.0
     environment:
@@ -45,12 +43,10 @@ services:
       timeout: 3s
       retries: 30
 
-  # 3.INGESTOR 
   ingestion_service:
     build: 
       context: ./ingestion_service
     environment:
-      # host.docker.internal se il simulatore gira fuori dal compose
       #- SIMULATOR_URL=http://host.docker.internal:8080 
       - SIMULATOR_URL=http://simulator:8080
       - BROKER_URL=amqp://guest:guest@broker:5672/
@@ -63,7 +59,6 @@ services:
       - mars_net
     restart: unless-stopped
 
-  # 4.RULE ENGINE 
   rule_engine:
     build: 
       context: ./rule_engine
@@ -73,10 +68,7 @@ services:
       - DB_USER=mars_user
       - DB_PASSWORD=mars_password
       - DB_NAME=rules_db
-      # La stringa di connessione punta al servizio "db" sulla porta 3306
       - DB_URL=mysql+pymysql://mars_user:mars_password@db:3306/rules_db
-      # host.docker.internal se il simulatore gira fuori dal compose
-      #- SIMULATOR_URL=http://host.docker.internal:8080 
       - SIMULATOR_URL=http://simulator:8080
     depends_on:
       broker:
@@ -89,7 +81,6 @@ services:
       - mars_net
     restart: unless-stopped
 
-  # 5. BACKEND
   backend:
     build:
       context: ./backend
@@ -107,7 +98,6 @@ services:
       - mars_net
     restart: unless-stopped
 
-  # 6. FRONTEND
   frontend:
     build:
       context: ./frontend
@@ -125,5 +115,5 @@ networks:
     driver: bridge
 
 volumes:
-  rabbitmq_data: #Appoggia i dati di rabbitmq
-  db_data: # Salva i dati di MySQL in modo persistente
+  rabbitmq_data:
+  db_data:

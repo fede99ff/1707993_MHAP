@@ -24,7 +24,7 @@ SIMULATOR_URL = os.getenv("SIMULATOR_URL", "http://simulator:8080")
 sensor_cache = {}
 rules_updated_trigger = False 
 
-app = FastAPI(title="Mars Dashboard Backend - Full SSE")
+app = FastAPI(title="Mars Dashboard Backend")
 
 app.add_middleware(
     CORSMiddleware,
@@ -34,32 +34,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-def rabbitmq_consumer():
-    connection = None
-    while connection is None:
-        try:
-            connection = pika.BlockingConnection(pika.URLParameters(BROKER_URL))
-        except:
-            time.sleep(3)
-    channel = connection.channel()
-    channel.exchange_declare(exchange='normalized_events', exchange_type='fanout')
-    result = channel.queue_declare(queue='', exclusive=True)
-    channel.queue_bind(exchange='normalized_events', queue=result.method.queue)
 
-    def callback(ch, method, properties, body):
-        try:
-            event = json.loads(body)
-            if event.get("source"):
-                sid = event["source"]
-                sensor_cache[sid] = event # Salviamo tutto l'evento
-        except: pass
 
-    channel.basic_consume(queue=result.method.queue, on_message_callback=callback, auto_ack=True)
-    channel.start_consuming()
 
-@app.on_event("startup")
-def startup_event():
-    threading.Thread(target=rabbitmq_consumer, daemon=True).start()
 
 class RuleIn(BaseModel):
     condition: str
@@ -73,20 +50,63 @@ class RuleOut(RuleIn):
 class ActuatorCommand(BaseModel):
     state: str
 
-def get_conn():
+
+
+
+
+
+def rabbitmq_consumer():
+    connection = None
+    while connection is None:
+        try:
+            connection = pika.BlockingConnection(pika.URLParameters(BROKER_URL))
+        except:
+            time.sleep(3)
+            
+            
+    channel = connection.channel()
+    channel.exchange_declare(exchange='normalized_events', exchange_type='fanout')
+    result = channel.queue_declare(queue='', exclusive=True)
+    channel.queue_bind(exchange='normalized_events', queue=result.method.queue)
+
+    def callback(ch, method, properties, body):
+        try:
+            event = json.loads(body)
+            if event.get("source"):
+                sid = event["source"]
+                sensor_cache[sid] = event
+        except: 
+            pass
+
+    channel.basic_consume(queue=result.method.queue, on_message_callback=callback, auto_ack=True)
+    channel.start_consuming()
+
+def get_conn(): #db
     return pymysql.connect(
         host=DB_HOST, user=DB_USER, password=DB_PASSWORD, database=DB_NAME,
         cursorclass=pymysql.cursors.DictCursor, autocommit=True
     )
 
-@app.get("/api/sensors/stream")
+
+
+
+
+@app.on_event("startup")
+def startup_event():
+    threading.Thread(target=rabbitmq_consumer, daemon=True).start()
+
+
+
+
+
+@app.get("/api/sensors/stream") #aggiornamenti live dashbaord
 async def sensors_stream():
     async def event_generator():
         global rules_updated_trigger
         last_payload = ""
         while True:
             try:
-                res = requests.get(f"{SIMULATOR_URL}/api/actuators", timeout=1)
+                res = requests.get(f"{SIMULATOR_URL}/api/actuators", timeout=1)#chiedo direttamente al simulator
                 actuators_data = res.json().get("actuators", {})
             except:
                 actuators_data = {}
@@ -108,12 +128,15 @@ async def sensors_stream():
             
     return StreamingResponse(event_generator(), media_type="text/event-stream")
 
-@app.get("/api/sensors/current")
+@app.get("/api/sensors/current") #cache
 def get_current_sensors():
     return {
         "sensors": sensor_cache
     }
 
+
+
+#operazioni CRUD:
 @app.get("/api/rules", response_model=List[RuleOut])
 def list_rules():
     with get_conn() as conn:
@@ -153,6 +176,9 @@ def delete_rule(rule_id: int):
             rules_updated_trigger = True
     return None
 
+
+
+
 @app.post("/api/actuators/{actuator_id}")
 def command_actuator(actuator_id: str, command: ActuatorCommand, background_tasks: BackgroundTasks):
     global rules_updated_trigger
@@ -165,13 +191,13 @@ def command_actuator(actuator_id: str, command: ActuatorCommand, background_task
         if res.status_code != 200:
             raise HTTPException(status_code=502, detail=f"Simulator returned {res.status_code}")
 
-        # 2. Disabilita le regole nel DB per questo attuatore
+        # Cancella regole per questo attuatore
         with get_conn() as conn:
             with conn.cursor() as cur:
                 cur.execute("UPDATE rules SET enabled = FALSE WHERE actuator = %s", (actuator_id,))
                 rules_updated_trigger = True 
 
-        # 3. Pianifica il ripristino automatico tra 30 secondi
+        # ripristino tra 30 sec
         background_tasks.add_task(restore_rules_after_delay, actuator_id, 30)
 
         return {"status": "success", "override": "active", "duration": 30}
@@ -179,15 +205,15 @@ def command_actuator(actuator_id: str, command: ActuatorCommand, background_task
     except requests.exceptions.RequestException as e:
         raise HTTPException(status_code=502, detail=str(e))
 
+
 async def restore_rules_after_delay(actuator_id: str, delay: int):
     global rules_updated_trigger
     await asyncio.sleep(delay)
     try:
         with get_conn() as conn:
             with conn.cursor() as cur:
-                # Riabilitiamo le regole per quell'attuatore
                 cur.execute("UPDATE rules SET enabled = TRUE WHERE actuator = %s", (actuator_id,))
-                rules_updated_trigger = True # Notifica il frontend via SSE per rinfrescare la tabella
+                rules_updated_trigger = True #refresh tabella
                 print(f"INFO: Regole riattivate per {actuator_id}")
     except Exception as e:
         print(f"ERROR: Errore nel ripristino regole: {e}")

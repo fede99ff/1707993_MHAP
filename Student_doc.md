@@ -31,13 +31,13 @@ The container is responsible for collecting raw data from the REST sensors expos
 It is the entry point of the asynchronous data pipeline and periodically polls the simulator sensor API.
 
 ### USER STORIES:
-1) As a user, i want to be able to see when it was the last update of the reading of the REST sensor in a dashboard
+1\) As a user, i want to be able to see when it was the last update of the reading of the REST sensor in a dashboard
 
 9\) As a user, i want the system to be able to recognize changes in the values registered by the sensors and enforce the corresponding automation rule
 
-10) As a user, i want the reading of the sensor in the dashboard to be automatically update periodically
+10\) As a user, i want the reading of the sensor in the dashboard to be automatically update periodically
 
-11) As a user, i want to be able to read all the reading of the data from the REST sensors
+11\) As a user, i want to be able to read all the reading of the data from the REST sensors
 
 ### PORTS: 
 No ports are published externally by this container
@@ -80,19 +80,19 @@ Handles the data that need to be persistent in the system, namely the automation
 It guarantees that rules remain available even if other parts of the system are restarted.
 
 ### USER STORIES:
-2) As a user, i want to be able to add an automation rule using an interface
+2\) As a user, i want to be able to add an automation rule using an interface
 
-3) As a user, i want to be able to delete an automation rule from the interface
+3\) As a user, i want to be able to delete an automation rule from the interface
 
-4) As a user, i want to be able to modify an existing automation rule
+4\) As a user, i want to be able to modify an existing automation rule
 
-5) As a user, i want to be able to read all the automation rule on the dashboard
+5\) As a user, i want to be able to read all the automation rule on the dashboard
 
-8) As a user, i want my automation rules to be persistent even if the system is restarted
+8\) As a user, i want my automation rules to be persistent even if the system is restarted
 
-9) As a user, i want the system to be able to recognize changes in the values registered by the sensors and enforce the corresponding automation rule
+9\) As a user, i want the system to be able to recognize changes in the values registered by the sensors and enforce the corresponding automation rule
 
-12) As a user i want the manual activation of a given actuator to last for 30 seconds even if there is a rule that would change the state of it
+12\) As a user i want the manual activation of a given actuator to last for 30 seconds even if there is a rule that would change the state of it
 
 ### PORTS: 
 3306:3306
@@ -128,9 +128,9 @@ It reads candidate rules from MySQL, parses the textual condition, extracts a co
 
 ### USER STORIES:
 
-9) As a user, i want the system to be able to recognize changes in the values registered by the sensors and enforce the corresponding automation rule
+9\) As a user, i want the system to be able to recognize changes in the values registered by the sensors and enforce the corresponding automation rule
 
-12) As a user i want the manual activation of a given actuator to last for 30 seconds even if there is a rule that would change the state of it
+12\) As a user i want the manual activation of a given actuator to last for 30 seconds even if there is a rule that would change the state of it
 
 ### PORTS: 
 No ports are published externally by this container
@@ -174,25 +174,25 @@ This container exposes the main HTTP API of the system.
 It provides CRUD operations for automation rules, a Server-Sent Events stream for pushing sensor and actuator updates to the dashboard, an endpoint for manual actuator control, and a helper endpoint to return the current in-memory sensor cache.
 
 ### USER STORIES:
-1) As a user, i want to be able to see when it was the last update of the reading of the REST sensor in a dashboard
+1\) As a user, i want to be able to see when it was the last update of the reading of the REST sensor in a dashboard
 
-2) As a user, i want to be able to add an automation rule using an interface
+2\) As a user, i want to be able to add an automation rule using an interface
 
-3) As a user, i want to be able to delete an automation rule from the interface
+3\) As a user, i want to be able to delete an automation rule from the interface
 
-4) As a user, i want to be able to modify an existing automation rule
+4\) As a user, i want to be able to modify an existing automation rule
 
-5) As a user, i want to be able to read all the automation rule on the dashboard
+5\) As a user, i want to be able to read all the automation rule on the dashboard
 
-6) As a user, i want to be able to manually control (turn on or off) an activator from the dashboard
+6\) As a user, i want to be able to manually control (turn on or off) an activator from the dashboard
 
-7) As a user, i want to be able to know the state of the actuators (ON/OFF)
+7\) As a user, i want to be able to know the state of the actuators (ON/OFF)
 
-10) As a user, i want the reading of the sensor in the dashboard to be automatically update periodically
+10\) As a user, i want the reading of the sensor in the dashboard to be automatically update periodically
 
-11) As a user, i want to be able to read all the reading of the data from the REST sensors
+11\) As a user, i want to be able to read all the reading of the data from the REST sensors
 
-12) As a user i want the manual activation of a given actuator to last for 30 seconds even if there is a rule that would change the state of it
+12\) As a user i want the manual activation of a given actuator to last for 30 seconds even if there is a rule that would change the state of it
 
 ### PORTS:
 8000:8000
@@ -240,25 +240,25 @@ This container serves the user-facing dashboard.
 It provides visualization of sensor values, actuator states, the last update time, and a rule management interface for add/edit/delete operations.
 
 ### USER STORIES:
-1) As a user, i want to be able to see when it was the last update of the reading of the REST sensor in a dashboard
+1\) As a user, i want to be able to see when it was the last update of the reading of the REST sensor in a dashboard
 
-2) As a user, i want to be able to add an automation rule using an interface
+2\) As a user, i want to be able to add an automation rule using an interface
 
-3) As a user, i want to be able to delete an automation rule from the interface
+3\) As a user, i want to be able to delete an automation rule from the interface
 
-4) As a user, i want to be able to modify an existing automation rule
+4\) As a user, i want to be able to modify an existing automation rule
 
-5) As a user, i want to be able to read all the automation rule on the dashboard
+5\) As a user, i want to be able to read all the automation rule on the dashboard
 
-6) As a user, i want to be able to manually control (turn on or off) an activator from the dashboard
+6\) As a user, i want to be able to manually control (turn on or off) an activator from the dashboard
 
-7) As a user, i want to be able to know the state of the actuators (ON/OFF)
+7\) As a user, i want to be able to know the state of the actuators (ON/OFF)
 
-10) As a user, i want the reading of the sensor in the dashboard to be automatically update periodically
+10\) As a user, i want the reading of the sensor in the dashboard to be automatically update periodically
 
-11) As a user, i want to be able to read all the reading of the data from the REST sensors
+11\) As a user, i want to be able to read all the reading of the data from the REST sensors
 
-12) As a user i want the manual activation of a given actuator to last for 30 seconds even if there is a rule that would change the state of it
+12\) As a user i want the manual activation of a given actuator to last for 30 seconds even if there is a rule that would change the state of it
 
 ### PORTS:
 3000:80
@@ -298,13 +298,13 @@ This container provides the asynchronous middleware used to decouple producers a
 It hosts RabbitMQ and distributes normalized sensor events to all subscribed services.
 
 ### USER STORIES:
-1) As a user, i want to be able to see when it was the last update of the reading of the REST sensor in a dashboard
+1\) As a user, i want to be able to see when it was the last update of the reading of the REST sensor in a dashboard
 
-9) As a user, i want the system to be able to recognize changes in the values registered by the sensors and enforce the corresponding automation rule
+9\) As a user, i want the system to be able to recognize changes in the values registered by the sensors and enforce the corresponding automation rule
 
-10) As a user, i want the reading of the sensor in the dashboard to be automatically update periodically
+10\) As a user, i want the reading of the sensor in the dashboard to be automatically update periodically
 
-11) As a user, i want to be able to read all the reading of the data from the REST sensors
+11\) As a user, i want to be able to read all the reading of the data from the REST sensors
 
 ### PORTS:
 5672:5672 and 
@@ -337,19 +337,19 @@ This container runs the provided Mars IoT simulator used as environment for the 
 It exposes REST endpoints for sensors and actuators and acts as the source of raw telemetry as well as the target of actuator commands.
 
 ### USER STORIES:
-1) As a user, i want to be able to see when it was the last update of the reading of the REST sensor in a dashboard
+1\) As a user, i want to be able to see when it was the last update of the reading of the REST sensor in a dashboard
 
-6) As a user, i want to be able to manually control (turn on or off) an activator from the dashboard
+6\) As a user, i want to be able to manually control (turn on or off) an activator from the dashboard
 
-7) As a user, i want to be able to know the state of the actuators (ON/OFF)
+7\) As a user, i want to be able to know the state of the actuators (ON/OFF)
 
-9) As a user, i want the system to be able to recognize changes in the values registered by the sensors and enforce the corresponding automation rule
+9\) As a user, i want the system to be able to recognize changes in the values registered by the sensors and enforce the corresponding automation rule
 
-10) As a user, i want the reading of the sensor in the dashboard to be automatically update periodically
+10\) As a user, i want the reading of the sensor in the dashboard to be automatically update periodically
 
-11) As a user, i want to be able to read all the reading of the data from the REST sensors
+11\) As a user, i want to be able to read all the reading of the data from the REST sensors
 
-12) As a user i want the manual activation of a given actuator to last for 30 seconds even if there is a rule that would change the state of it
+12\) As a user i want the manual activation of a given actuator to last for 30 seconds even if there is a rule that would change the state of it
 
 ### PORTS:
 8080:8080

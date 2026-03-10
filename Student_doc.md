@@ -31,9 +31,9 @@ The container is responsible for collecting raw data from the REST sensors expos
 It is the entry point of the asynchronous data pipeline and periodically polls the simulator sensor API.
 
 ### USER STORIES:
-- 1) As a user, i want to be able to see when it was the last update of the reading of the REST sensor in a dashboard
+1) As a user, i want to be able to see when it was the last update of the reading of the REST sensor in a dashboard
 
-- 9) As a user, i want the system to be able to recognize changes in the values registered by the sensors and enforce the corresponding automation rule
+ 9) As a user, i want the system to be able to recognize changes in the values registered by the sensors and enforce the corresponding automation rule
 
 - 10) As a user, i want the reading of the sensor in the dashboard to be automatically update periodically
 

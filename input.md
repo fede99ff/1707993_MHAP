@@ -228,4 +228,4 @@ Supported operators:
 | `condition`    | string  | rule condition stored as a parsable string, e.g. `greenhouse_temperature > 28 C` |
 | `action_taken` | string  | target actuator state, `ON` or `OFF`                                             |
 | `actuator`     | string  | actuator identifier                                                              |
-| `enabled`      | boolean | whether the rule is active                                                       |
+| `enabled`      | boolean | whether the rule is active (see user story 12)                                   |

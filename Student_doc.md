@@ -10,17 +10,17 @@ These rules allow the system to autonomously trigger actuators, ensuring all env
 # USER STORIES:
 
 1) As a user, i want to be able to see when it was the last update of the reading of the REST sensor in a dashboard
-2) As a user, i want to be able to add an automation rule using an interface
-3) As a user, i want to be able to delete an automation rule from the interface
-4) As a user, i want to be able to modify an existing automation rule
+2) As a user, i want to be able to add an automation rule from the dashboard
+3) As a user, i want to be able to delete an automation rule from the dashboard
+4) As a user, i want to be able to modify an existing automation rule from the dashboard
 5) As a user, i want to be able to read all the automation rule on the dashboard
 6) As a user, i want to be able to manually control (turn on or off) an activator from the dashboard
 7) As a user, i want to be able to know the state of the actuators (ON/OFF)
 8) As a user, i want my automation rules to be persistent even if the system is restarted
 9) As a user, i want the system to be able to recognize changes in the values registered by the sensors and enforce the corresponding automation rule
-10) As a user, i want the reading of the sensor in the dashboard to be automatically update periodically
-11) As a user, i want to be able to read all the reading of the data from the REST sensors
-12) As a user i want the manual activation of a given actuator to last for 30 seconds even if there is a rule that would change the state of it
+10) As a user, I want the reading of the sensor in the dashboard to be automatically update periodically
+11) As a user, I want to be able to read all the reading of the data from the REST sensors
+12) As a user I want the manual activation of a given actuator to last for 30 seconds even if there is a rule that would change the state of it
 
 # CONTAINERS:
 

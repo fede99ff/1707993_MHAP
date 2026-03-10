@@ -6,194 +6,256 @@
     <title>Mars Habitat Dashboard</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        body { background-color: #f4f6f9; padding: 20px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        .card { margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border: none; border-radius: 10px; }
-        .sensor-value { font-size: 1.75rem; font-weight: bold; color: #0d6efd; margin-top: 10px; transition: color 0.3s ease; }
-        .sensor-title { font-size: 1rem; color: #6c757d; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
-        .actuator-switch .form-check-input { width: 3em; height: 1.5em; cursor: pointer; }
-        .actuator-switch .form-check-label { font-size: 1.1rem; margin-left: 10px; margin-top: 2px; cursor: pointer; font-weight: 500; }
+        /* Palette Marte: Ruggine, Arancio polveroso, Nero Siderale */
+        :root {
+            --mars-red: #A14031;
+            --mars-orange: #D35400;
+            --mars-dust: #EDC9AF;
+            --space-dark: #2C3E50;
+            --panel-bg: #fdfaf8;
+        }
+
+        body { 
+            background-color: #b355559c; /* Sfondo scuro che richiama il suolo marziano */
+            padding: 40px 20px; 
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; 
+        }
+
+        /* 2. Il Rettangolo/Wrapper della Dashboard */
+        .dashboard-wrapper {
+            background-color: var(--panel-bg);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 0 110px rgba(187, 57, 57, 0.671);
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        /* 1. Cambio Colori (Red/Orange Theme) */
+        .card { 
+            margin-bottom: 20px; 
+            box-shadow: 0 4px 6px rgba(161, 64, 49, 0.1); 
+            border: 1px solid rgba(161, 64, 49, 0.2); 
+            border-radius: 10px; 
+            background-color: #fff;
+        }
+
+        h2, h4 { color: var(--mars-red); }
+        
+        .sensor-value { 
+            font-size: 1.75rem; 
+            font-weight: bold; 
+            color: var(--mars-orange); /* Valori in arancio */
+            margin-top: 10px; 
+        }
+
+        .sensor-title { 
+            font-size: 0.9rem; 
+            color: #7f8c8d; 
+            font-weight: 600; 
+            text-transform: uppercase; 
+            letter-spacing: 0.5px; 
+        }
+
+        /* Bottoni e Switch */
+        .btn-primary { background-color: var(--mars-red); border-color: var(--mars-red); }
+        .btn-primary:hover { background-color: var(--mars-orange); border-color: var(--mars-orange); }
+        
+        .form-check-input:checked {
+            background-color: var(--mars-orange);
+            border-color: var(--mars-orange);
+        }
+        .btn-outline-mars {
+            color: var(--mars-red);
+            border-color: var(--mars-red);
+            background-color: transparent;
+            font-weight: 600;
+            transition: all 0.2s ease-in-out;
+        }
+
+        .btn-outline-mars:hover {
+            background-color: var(--mars-red);
+            border-color: var(--mars-red);
+            color: white; 
+            box-shadow: 0 0 10px rgba(161, 64, 49, 0.4); 
+        }
+
+        .table-light { --bs-table-bg: #f8e9e2; }
+        
+        .badge.bg-success { background-color: var(--mars-red) !important; } /* Azione ON come allerta rossa */
+        
+        .border-bottom { border-bottom: 2px solid var(--mars-dust) !important; }
+
+        .modal-header.bg-primary { background-color: var(--mars-red) !important; }
     </style>
 </head>
 <body>
 
-<div class="container mt-4">
-    <h2 class="mb-4 text-center fw-bold">🚀 Mars Habitat Command Center</h2>
-
-    <div class="d-flex justify-content-between align-items-end border-bottom pb-2 mb-3">
-        <h4 class="mb-0">📡 Sensors readings</h4>
-        <small class="text-muted">Last update: <span id="last-update-time" class="fw-bold text-success">--:--:--</span></small>
-    </div>
+<div class="dashboard-wrapper">
     
-    <div class="row" id="sensors-container">
-        <div class="col-md-3">
-            <div class="card p-3 h-100 ">
-                <div class="sensor-title">🌡️ Greenhouse Temp</div>
-                <div class="d-flex align-items-baseline">
-                    <p class="sensor-value mb-0" id="val-greenhouse_temperature">--</p>
-                    <span class="ms-1 text-muted">°C</span>
-                </div>
-            </div>
-        </div>
+    <div class="container-fluid">
+        <h2 class="mb-4 text-center fw-bold">🔴 Mars Habitat Command Center</h2>
 
-        <div class="col-md-3">
-            <div class="card p-3 h-100">
-                <div class="sensor-title">💧 Entrance Humidity</div>
-                <div class="d-flex align-items-baseline">
-                    <p class="sensor-value mb-0" id="val-entrance_humidity">--</p>
-                    <span class="ms-1 text-muted">%</span>
-                </div>
-            </div>
+        <div class="d-flex justify-content-between align-items-end border-bottom pb-2 mb-3">
+            <h4 class="mb-0">   Sensors readings</h4>
+            <small class="text-muted">Last update: <span id="last-update-time" class="fw-bold" style="color: var(--mars-orange);">--:--:--</span></small>
         </div>
-
-        <div class="col-md-3">
-            <div class="card p-3 h-100">
-                <div class="sensor-title">💨 Air Quality (µg/m³)</div>
-                <div class="d-flex justify-content-between mt-2">
-                    <div class="text-center">
-                        <small class="text-muted fw-bold">PM1</small>
-                        <div class="sensor-value fs-5 mt-0" id="val-air_quality-pm1">--</div>
+        
+        <div class="row" id="sensors-container">
+            <div class="col-md-3">
+                <div class="card p-3 h-100 ">
+                    <div class="sensor-title">🌡️ Greenhouse Temp</div>
+                    <div class="d-flex align-items-baseline">
+                        <p class="sensor-value mb-0" id="val-greenhouse_temperature">--</p>
+                        <span class="ms-1 text-muted">°C</span>
                     </div>
-                    <div class="text-center">
-                        <small class="text-muted fw-bold">PM2.5</small>
-                        <div class="sensor-value fs-5 mt-0" id="val-air_quality-pm25">--</div>
-                    </div>
-                    <div class="text-center">
-                        <small class="text-muted fw-bold">PM10</small>
-                        <div class="sensor-value fs-5 mt-0" id="val-air_quality-pm10">--</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-md-3">
-            <div class="card p-3 h-100">
-                <div class="sensor-title">😶‍🌫️ Hall CO2</div>
-                <div class="d-flex align-items-baseline">
-                    <p class="sensor-value mb-0" id="val-co2_hall">--</p>
-                    <span class="ms-1 text-muted">ppm</span>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-md-3 mt-2">
-            <div class="card p-3 h-100 ">
-                <div class="sensor-title">🧪 Hydroponic pH</div>
-                <p class="sensor-value" id="val-hydroponic_ph">--</p>
-            </div>
-        </div>
-
-        <div class="col-md-3 mt-2">
-            <div class="card p-3 h-100">
-                <div class="sensor-title">🌊 Water Tank Level</div>
-                <div class="d-flex align-items-baseline">
-                    <p class="sensor-value mb-0" id="val-water_tank_level">--</p>
-                    <span class="ms-1 text-muted">%</span>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-md-3 mt-2">
-            <div class="card p-3 h-100">
-                <div class="sensor-title">⏱️ Corridor Pressure</div>
-                <div class="d-flex align-items-baseline">
-                    <p class="sensor-value mb-0" id="val-corridor_pressure">--</p>
-                    <span class="ms-1 text-muted">Pa</span>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-md-3 mt-2">
-            <div class="card p-3 h-100 ">
-                <div class="sensor-title">🌫️ Air Quality (VOC)</div>
-                <div class="d-flex align-items-baseline">
-                    <p class="sensor-value mb-0" id="val-air_quality_voc">--</p>
-                    <span class="ms-1 text-muted">ppb</span>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <h4 class="mt-4 mb-3 border-bottom pb-2">🕹️ Manual Actuator Control</h4>
-    <div class="card p-3 bg-white">
-        <div class="row text-center">
-            
-            <div class="col-md-3 border-end">
-                <div class="form-check form-switch d-flex justify-content-center align-items-center actuator-switch">
-                    <input class="form-check-input" type="checkbox" id="switch-cooling_fan" onchange="toggleActuator('cooling_fan', this.checked)">
-                    <label class="form-check-label" for="switch-cooling_fan">❄️ Cooling Fan</label>
-                </div>
-            </div>
-
-            <div class="col-md-3 border-end">
-                <div class="form-check form-switch d-flex justify-content-center align-items-center actuator-switch">
-                    <input class="form-check-input" type="checkbox" id="switch-habitat_heater" onchange="toggleActuator('habitat_heater', this.checked)">
-                    <label class="form-check-label" for="switch-habitat_heater">🔥 Habitat Heater</label>
-                </div>
-            </div>
-
-            <div class="col-md-3 border-end">
-                <div class="form-check form-switch d-flex justify-content-center align-items-center actuator-switch">
-                    <input class="form-check-input" type="checkbox" id="switch-entrance_humidifier" onchange="toggleActuator('entrance_humidifier', this.checked)">
-                    <label class="form-check-label" for="switch-entrance_humidifier">💦 Humidifier</label>
                 </div>
             </div>
 
             <div class="col-md-3">
-                <div class="form-check form-switch d-flex justify-content-center align-items-center actuator-switch">
-                    <input class="form-check-input" type="checkbox" id="switch-hall_ventilation" onchange="toggleActuator('hall_ventilation', this.checked)">
-                    <label class="form-check-label" for="switch-hall_ventilation">🌬️ Hall Ventilation</label>
+                <div class="card p-3 h-100">
+                    <div class="sensor-title">💧 Entrance Humidity</div>
+                    <div class="d-flex align-items-baseline">
+                        <p class="sensor-value mb-0" id="val-entrance_humidity">--</p>
+                        <span class="ms-1 text-muted">%</span>
+                    </div>
                 </div>
             </div>
 
+            <div class="col-md-3">
+                <div class="card p-3 h-100">
+                    <div class="sensor-title">💨 Air Quality (µg/m³)</div>
+                    <div class="d-flex justify-content-between mt-2">
+                        <div class="text-center">
+                            <small class="text-muted fw-bold">PM1</small>
+                            <div class="sensor-value fs-5 mt-0" id="val-air_quality-pm1">--</div>
+                        </div>
+                        <div class="text-center">
+                            <small class="text-muted fw-bold">PM2.5</small>
+                            <div class="sensor-value fs-5 mt-0" id="val-air_quality-pm25">--</div>
+                        </div>
+                        <div class="text-center">
+                            <small class="text-muted fw-bold">PM10</small>
+                            <div class="sensor-value fs-5 mt-0" id="val-air_quality-pm10">--</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-3">
+                <div class="card p-3 h-100">
+                    <div class="sensor-title">😶‍🌫️ Hall CO2</div>
+                    <div class="d-flex align-items-baseline">
+                        <p class="sensor-value mb-0" id="val-co2_hall">--</p>
+                        <span class="ms-1 text-muted">ppm</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-3 mt-2">
+                <div class="card p-3 h-100 ">
+                    <div class="sensor-title">🧪 Hydroponic pH</div>
+                    <p class="sensor-value" id="val-hydroponic_ph">--</p>
+                </div>
+            </div>
+
+            <div class="col-md-3 mt-2">
+                <div class="card p-3 h-100">
+                    <div class="sensor-title">🌊 Water Tank Level</div>
+                    <div class="d-flex align-items-baseline">
+                        <p class="sensor-value mb-0" id="val-water_tank_level">--</p>
+                        <span class="ms-1 text-muted">%</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-3 mt-2">
+                <div class="card p-3 h-100">
+                    <div class="sensor-title">⏱️ Corridor Pressure</div>
+                    <div class="d-flex align-items-baseline">
+                        <p class="sensor-value mb-0" id="val-corridor_pressure">--</p>
+                        <span class="ms-1 text-muted">Pa</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-3 mt-2">
+                <div class="card p-3 h-100 ">
+                    <div class="sensor-title">🌫️ Air Quality (VOC)</div>
+                    <div class="d-flex align-items-baseline">
+                        <p class="sensor-value mb-0" id="val-air_quality_voc">--</p>
+                        <span class="ms-1 text-muted">ppb</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <h4 class="mt-4 mb-3 border-bottom pb-2">Manual Actuator Control</h4>
+        <div class="card p-4">
+            <div class="row text-center">
+                <div class="col-md-3 border-end">
+                    <div class="form-check form-switch d-flex justify-content-center align-items-center">
+                        <input class="form-check-input" type="checkbox" id="switch-cooling_fan" onchange="toggleActuator('cooling_fan', this.checked)">
+                        <label class="form-check-label ms-2 fw-bold" for="switch-cooling_fan">❄️ CoolingFan</label>
+                    </div>
+                </div>
+                <div class="col-md-3 border-end">
+                    <div class="form-check form-switch d-flex justify-content-center align-items-center">
+                        <input class="form-check-input" type="checkbox" id="switch-entrance_humidifier" onchange="toggleActuator('entrance_humidifier', this.checked)">
+                        <label class="form-check-label ms-2 fw-bold" for="switch-entrance_humidifier">💦 Entrance Humidifier</label>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="form-check form-switch d-flex justify-content-center align-items-center">
+                        <input class="form-check-input" type="checkbox" id="switch-hall_ventilation" onchange="toggleActuator('hall_ventilation', this.checked)">
+                        <label class="form-check-label ms-2 fw-bold" for="switch-hall_ventilation">🌬️ Hall Ventilation</label>
+                    </div>
+                </div>
+                
+                <div class="col-md-3 border-end">
+                    <div class="form-check form-switch d-flex justify-content-center align-items-center">
+                        <input class="form-check-input" type="checkbox" id="switch-habitat_heater" onchange="toggleActuator('habitat_heater', this.checked)">
+                        <label class="form-check-label ms-2 fw-bold" for="switch-habitat_heater">🔥 Habitat Heater</label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <h4 class="mt-5 mb-3 border-bottom pb-2">Automation Rules</h4>
+        <div class="card p-3">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>ID</th>
+                            <th>Condition</th>
+                            <th>Target</th>
+                            <th>Action</th>
+                            <th>Manage</th>
+                        </tr>
+                    </thead>
+                    <tbody id="rules-table-body">
+                        </tbody>
+                </table>
+            </div>
+            <button class="btn btn-primary btn-sm mt-2" onclick="openAddRuleModal()">+ Add New Rule</button>
         </div>
     </div>
 
-    <h4 class="mt-5 mb-3 border-bottom pb-2">⚙️ Automation Rules</h4>
-    <div class="card p-3 bg-white">
-        <div class="table-responsive">
-            <table class="table table-hover align-middle">
-                <thead class="table-light">
-                    <tr>
-                        <th>ID</th>
-                        <th>Condition (Sensor > Threshold)</th>
-                        <th>Actuator Target</th>
-                        <th>Action</th>
-                        <th>Manage</th>
-                    </tr>
-                </thead>
-                <tbody id="rules-table-body">
-                    <tr>
-                        <td>1</td>
-                        <td><code>greenhouse_temperature > 30.0</code></td>
-                        <td><strong>cooling_fan</strong></td>
-                        <td><span class="badge bg-success">ON</span></td>
-                        <td>
-                            <button class="btn btn-sm btn-outline-primary" onclick="editRule(1, 'greenhouse_temperature > 30.0', 'cooling_fan', 'ON')">Edit</button>
-                            <button class="btn btn-sm btn-outline-danger" onclick="deleteRule(1)">Delete</button>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-        <div class="mt-2">
-            <button class="btn btn-primary btn-sm" onclick="openAddRuleModal()">+ Add New Rule</button>
-        </div>
-    </div>
+</div> <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
-</div>
-
-<div class="modal fade" id="ruleModal" tabindex="-1" aria-labelledby="ruleModalLabel">
+<div class="modal fade" id="ruleModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
+            <div class="modal-header">
                 <h5 class="modal-title" id="ruleModalLabel">🛠️ Configure Automation Rule</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
                 <form id="ruleForm">
                     <input type="hidden" id="ruleId">
 
-                    <h6 class="border-bottom pb-1 mb-3">1. When this happens...</h6>
+                    <div class="modal-section-title">1. When this happens...</div>
                     
                     <div class="mb-3">
                         <label class="form-label text-muted small fw-bold">Select Sensor</label>
@@ -212,12 +274,12 @@
                     <div class="row mb-3">
                         <div class="col-6">
                             <label class="form-label text-muted small fw-bold">Operator</label>
-                            <select class="form-select" id="ruleOperator" required>
+                            <select class="form-select" id="ruleOperator">
                                 <option value=">">Greater than (>)</option>
-                                <option value=">=">Greater than or equal to (>=)</option>
                                 <option value="<">Less than (<)</option>
-                                <option value="<=">Less than or equal to (<=)</option>
                                 <option value="==">Equal to (==)</option>
+                                <option value=">=">>=</option>
+                                <option value="<="><=</option>
                             </select>
                         </div>
                         <div class="col-6">
@@ -226,12 +288,12 @@
                         </div>
                     </div>
 
-                    <h6 class="border-bottom pb-1 mb-3 mt-4">2. Do this...</h6>
+                    <div class="modal-section-title">2. Do this...</div>
                     
                     <div class="row mb-3">
                         <div class="col-8">
                             <label class="form-label text-muted small fw-bold">Target Actuator</label>
-                            <select class="form-select" id="ruleActuator" required>
+                            <select class="form-select" id="ruleActuator">
                                 <option value="cooling_fan">❄️ Cooling Fan</option>
                                 <option value="habitat_heater">🔥 Habitat Heater</option>
                                 <option value="entrance_humidifier">💦 Entrance Humidifier</option>
@@ -240,7 +302,7 @@
                         </div>
                         <div class="col-4">
                             <label class="form-label text-muted small fw-bold">Action</label>
-                            <select class="form-select" id="ruleAction" required>
+                            <select class="form-select" id="ruleAction">
                                 <option value="ON">Turn ON</option>
                                 <option value="OFF">Turn OFF</option>
                             </select>
@@ -255,8 +317,8 @@
         </div>
     </div>
 </div>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-
+</body>
+</html>
 <script>
     const API_BASE = "http://localhost:8000/api";
     let sensorEventSource = null;
@@ -401,7 +463,7 @@
                         <td>${r.actuator}</td>
                         <td><span class="badge ${r.action_taken === 'ON' ? 'bg-success' : 'bg-danger'}">${r.action_taken}</span></td>
                         <td>
-                            <button class="btn btn-sm btn-outline-primary" onclick="editRule(${r.id}, '${r.condition}', '${r.actuator}', '${r.action_taken}')">Edit</button>
+                            <button class="btn btn-sm btn-outline-mars" onclick="editRule(${r.id}, '${r.condition}', '${r.actuator}', '${r.action_taken}')">Edit</button>
                             <button class="btn btn-sm btn-outline-danger" onclick="deleteRule(${r.id})">Delete</button>
                         </td>
                     </tr>
